@@ -54,7 +54,7 @@ const ReorderablePageItem = ({
                     )}
                 </Row>
                 
-                <Column className='flex-1 justify-center'>
+                <Column className='flex-1 justify-center min-w-0'>
                     <AppButton variant='none' className='flex-1' onPress={onPress}>
                         <Column className='flex-1 justify-between'>
                             <PoppinsText weight='medium' className='text-left'>
@@ -67,7 +67,7 @@ const ReorderablePageItem = ({
                     </AppButton>
                 </Column>
                 
-                <PageThumbnail imageUrl={page.imageUrl} />
+                <PageThumbnail imageUrl={page.imageUrl} className="w-16 h-12 sm:w-36 sm:h-24" />
                 
                 <Row gap={2}>
                     {index < totalCount - 1 ? (
