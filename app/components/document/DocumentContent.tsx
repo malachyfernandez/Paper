@@ -11,7 +11,7 @@ import Column from '../layout/Column';
 import Row from '../layout/Row';
 import PoppinsText from '../ui/text/PoppinsText';
 import AppButton from '../ui/buttons/AppButton';
-import { Tabs } from 'heroui-native';
+
 import { useAction } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { MathDocumentPage } from 'types/mathDocuments';
@@ -230,9 +230,8 @@ const DocumentContent = ({ documentTitle, documentId, activePage, onReplacePage,
                         </View> */}
                     <View className='flex-1'>
                         <Column gap={4} className='flex-1'>
-                            <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1">
-                                <Tabs.Content value="editor" className='flex-1' style={{ minHeight: 0 }}>
-
+                            {activeTab === 'editor' && (
+                                <View className='flex-1' style={{ minHeight: 0 }}>
                                     <Animated.View
                                         entering={FadeInDown.duration(300).springify()}
                                         exiting={FadeOutDown.duration(300).springify()}
@@ -247,25 +246,21 @@ const DocumentContent = ({ documentTitle, documentId, activePage, onReplacePage,
                                             />
                                         </View>
                                     </Animated.View>
+                                </View>
+                            )}
 
-
-                                </Tabs.Content>
-
-                                <Tabs.Content value="preview" className='flex-1' style={{ minHeight: 0 }}>
-
+                            {activeTab === 'preview' && (
+                                <View className='flex-1' style={{ minHeight: 0 }}>
                                     <Animated.View
                                         entering={FadeInDown.duration(300).springify()}
-                                        // exiting={FadeOutDown.duration(300).springify()}
                                         className='flex-1'
                                     >
                                         <View className='flex-1' style={{ minHeight: 0 }}>
                                             <ContentPreview markdown={markdownDraft} headerHeight={headerHeight} footerHeight={footerHeight} />
                                         </View>
                                     </Animated.View>
-
-                                </Tabs.Content>
-                            </Tabs>
-
+                                </View>
+                            )}
                         </Column>
                     </View>
 
