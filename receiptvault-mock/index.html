@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReceiptVault — Mock Demo</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Poppins',sans-serif; background:#f5f0e8; color:#1a1a1a; }
+    :root {
+      --bg:#f5f0e8; --inner-bg:#faf8f4; --text:#1a1a1a; --subtext:#6b7280;
+      --accent:#2d5a2d; --accent-light:rgba(45,90,45,0.1); --border:#d1c9b8;
+      --subtle-border:#e5ddd0; --red:#dc2626; --blue:#1d4ed8; --yellow:#a16207;
+    }
+    #root { max-width:430px; margin:0 auto; min-height:100vh; background:var(--bg); position:relative; overflow:hidden; box-shadow:0 0 40px rgba(0,0,0,.08); }
+    .col { display:flex; flex-direction:column; }
+    .row { display:flex; flex-direction:row; }
+    .center { align-items:center; justify-content:center; }
+    .items-center { align-items:center; }
+    .items-end { align-items:flex-end; }
+    .justify-between { justify-content:space-between; }
+    .w-full { width:100%; }
+    .flex-1 { flex:1; }
+    .wrap { flex-wrap:wrap; }
+    .text-center { text-align:center; }
+    .text-right { text-align:right; }
+    .font-medium { font-weight:500; }
+    .font-bold { font-weight:700; }
+    .gap-1 { gap:4px; } .gap-2 { gap:8px; } .gap-3 { gap:12px; } .gap-4 { gap:16px; } .gap-6 { gap:24px; }
+    .p-4 { padding:16px; }
+    .text-sm { font-size:12px; }
+    .text-xs { font-size:11px; }
+    .text-sub { color:var(--subtext); }
+    .text-white { color:#fff; }
+    .text-red { color:var(--red); }
+    .scrollable { overflow-y:auto; height:calc(100vh - 49px); }
+
+    .card { background:var(--inner-bg); border:2px solid var(--border); border-radius:8px; padding:16px; }
+    .info-box { background:var(--accent-light); border-radius:8px; padding:12px; }
+    .divider { height:1px; background:var(--subtle-border); width:100%; }
+
+    .btn { display:flex; align-items:center; justify-content:center; border-radius:8px; padding:12px 20px; cursor:pointer; border:2px solid var(--border); background:transparent; font-family:'Poppins'; font-size:14px; font-weight:500; transition:all .15s; }
+    .btn:hover { opacity:.85; }
+    .btn-green { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .btn-red { background:transparent; color:var(--red); border-color:var(--red); }
+    .btn-outline { background:transparent; color:var(--text); }
+    .btn-grey { background:#9ca3af; color:#fff; border-color:#9ca3af; cursor:not-allowed; }
+    .btn-sm { padding:6px 12px; font-size:12px; }
+    .btn-lg { padding:14px 20px; font-size:15px; }
+    .btn-full { width:100%; }
+    .icon-btn { width:40px; height:40px; padding:0; }
+
+    .navbar { display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid var(--border); background:var(--inner-bg); padding:8px 16px; }
+    .logo-circle { width:32px; height:32px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; color:#fff; font-size:15px; }
+    .nav-tabs { display:flex; gap:4px; }
+    .nav-tab { padding:4px 12px; font-size:12px; cursor:pointer; border:none; background:transparent; font-family:'Poppins'; border-bottom:2px solid transparent; }
+    .nav-tab-active { border-bottom:2px solid var(--accent); font-weight:500; }
+    .nav-tab-inactive { opacity:.6; }
+
+    .stat-card { flex:1; background:var(--inner-bg); border:2px solid var(--border); border-radius:8px; padding:12px; text-align:center; }
+    .stat-value { font-size:18px; font-weight:700; }
+    .stat-label { font-size:11px; color:var(--subtext); font-weight:500; }
+
+    .group-card { background:var(--inner-bg); border:2px solid var(--border); border-radius:8px; padding:16px; cursor:pointer; border-left-width:6px; }
+    .group-emoji { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; }
+
+    .receipt-card { background:var(--inner-bg); border:2px solid var(--border); border-radius:8px; padding:12px; cursor:pointer; }
+    .receipt-thumb { width:48px; height:48px; border-radius:8px; object-fit:cover; flex-shrink:0; }
+    .receipt-thumb-ph { width:48px; height:48px; border-radius:8px; border:1px solid var(--border); background:var(--bg); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+
+    .pill { display:flex; align-items:center; gap:4px; border:2px solid var(--border); background:var(--inner-bg); border-radius:999px; padding:4px 12px; font-size:12px; cursor:pointer; }
+    .pill-selected { border-color:var(--accent); background:var(--accent-light); font-weight:500; }
+
+    .cur-chip { border:2px solid var(--border); background:var(--inner-bg); border-radius:8px; padding:8px 12px; font-size:14px; cursor:pointer; white-space:nowrap; }
+    .cur-chip-selected { border-color:var(--accent); background:var(--accent-light); font-weight:700; }
+    .cur-scroll { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; }
+
+    .input { border:2px solid var(--border); border-radius:8px; background:transparent; padding:8px 12px; font-family:'Poppins'; font-size:14px; width:100%; outline:none; }
+    .input:focus { border-color:var(--accent); }
+    .label { font-size:13px; font-weight:500; }
+
+    .photo-drop { height:180px; border:2px dashed var(--accent); background:var(--accent-light); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:4px; cursor:pointer; }
+    .photo-preview { width:100%; height:180px; border-radius:8px; object-fit:cover; }
+    .detail-img { width:100%; height:220px; border-radius:8px; object-fit:cover; }
+
+    .bar-track { height:8px; width:100%; background:var(--bg); border-radius:999px; overflow:hidden; }
+    .bar-fill { height:100%; border-radius:999px; background:var(--accent); }
+
+    @keyframes fade { from{opacity:0} to{opacity:1} }
+    .screen { animation:fade .25s ease; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script id="app-source" type="text/plain">
+const { useState, useMemo } = React;
+const h = React.createElement;
+
+// ---------------------------------------------------------------------------
+// Currency model
+// ---------------------------------------------------------------------------
+const CURRENCIES = [
+  { code:'USD', symbol:'$', name:'US Dollar' },
+  { code:'JPY', symbol:'¥', name:'Japanese Yen' },
+  { code:'EUR', symbol:'€', name:'Euro' },
+  { code:'GBP', symbol:'£', name:'British Pound' },
+  { code:'KRW', symbol:'₩', name:'South Korean Won' },
+  { code:'THB', symbol:'฿', name:'Thai Baht' },
+];
+
+const CAT = {
+  food:{label:'Food & Dining', icon:'🍜'},
+  transport:{label:'Transport', icon:'🚆'},
+  lodging:{label:'Lodging', icon:'🏨'},
+  shopping:{label:'Shopping', icon:'🛍️'},
+  entertainment:{label:'Entertainment', icon:'🎬'},
+  groceries:{label:'Groceries', icon:'🛒'},
+  health:{label:'Health', icon:'💊'},
+  business:{label:'Business', icon:'💼'},
+  other:{label:'Other', icon:'📄'},
+};
+const CAT_KEYS = Object.keys(CAT);
+
+function curInfo(code){
+  for (let i=0;i<CURRENCIES.length;i++){ if (CURRENCIES[i].code===code) return CURRENCIES[i]; }
+  return { code:code, symbol:code, name:code };
+}
+function noDec(code){ return code==='JPY' || code==='KRW'; }
+function fmt(amount, code){
+  const sym = curInfo(code).symbol;
+  const v = noDec(code) ? Math.round(amount).toLocaleString('en-US')
+    : amount.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return sym + v;
+}
+function toHome(amount, from, home, rates){
+  if (from===home) return amount;
+  const r = rates[from];
+  if (!r || r<=0) return amount;
+  return amount / r;
+}
+function fmtPlain(amount, code){
+  return noDec(code) ? Math.round(amount).toLocaleString('en-US') : amount.toFixed(2);
+}
+
+// ---------------------------------------------------------------------------
+// Dummy seed data (mirrors the userVariables collections)
+// ---------------------------------------------------------------------------
+const SEED_GROUPS = [
+  { id:'g1', name:'Japan 2026', description:'Tokyo + Kyoto trip', defaultCurrency:'JPY', color:'#b91c1c', emoji:'🗾', createdAt:Date.now()-700000000 },
+  { id:'g2', name:'Work Expenses', description:'Reimbursable', defaultCurrency:'USD', color:'#1d4ed8', emoji:'💼', createdAt:Date.now()-500000000 },
+  { id:'g3', name:'Groceries', description:'Monthly', defaultCurrency:'USD', color:'#2d5a2d', emoji:'🛒', createdAt:Date.now()-300000000 },
+];
+
+const SEED_RECEIPTS = [
+  { id:'r1', groupId:'g1', merchant:'Ichiran Ramen', purpose:'Lunch in Shibuya', category:'food', amount:1980, currency:'JPY', notes:'Tonkotsu, extra egg', purchaseDate:'2026-05-12', createdAt:Date.now()-690000000 },
+  { id:'r2', groupId:'g1', merchant:'JR East', purpose:'Shinkansen Tokyo→Kyoto', category:'transport', amount:13320, currency:'JPY', notes:'Reserved seat', purchaseDate:'2026-05-13', createdAt:Date.now()-680000000 },
+  { id:'r3', groupId:'g1', merchant:'Hotel Granvia Kyoto', purpose:'2 nights', category:'lodging', amount:42000, currency:'JPY', notes:'', purchaseDate:'2026-05-13', createdAt:Date.now()-679000000 },
+  { id:'r4', groupId:'g1', merchant:'Don Quijote', purpose:'Souvenirs & snacks', category:'shopping', amount:6480, currency:'JPY', notes:'Kit-Kats', purchaseDate:'2026-05-14', createdAt:Date.now()-670000000 },
+  { id:'r5', groupId:'g2', merchant:'AWS', purpose:'Cloud hosting', category:'business', amount:142.30, currency:'USD', notes:'May invoice', purchaseDate:'2026-05-01', createdAt:Date.now()-500000000 },
+  { id:'r6', groupId:'g2', merchant:'Delta Airlines', purpose:'Client visit flight', category:'transport', amount:318.40, currency:'USD', notes:'', purchaseDate:'2026-05-04', createdAt:Date.now()-490000000 },
+  { id:'r7', groupId:'g3', merchant:'Whole Foods', purpose:'Weekly shop', category:'groceries', amount:86.12, currency:'USD', notes:'', purchaseDate:'2026-05-18', createdAt:Date.now()-300000000 },
+  { id:'r8', groupId:'g3', merchant:'Trader Joe\'s', purpose:'Snacks', category:'groceries', amount:34.55, currency:'USD', notes:'', purchaseDate:'2026-05-20', createdAt:Date.now()-280000000 },
+];
+
+const SEED_SETTINGS = {
+  homeCurrency:'USD',
+  exchangeRates:{ USD:1, JPY:157.2, EUR:0.92, GBP:0.79, KRW:1370, THB:36.5 },
+};
+
+const GROUP_COLORS = ['#2d5a2d','#b91c1c','#1d4ed8','#a16207','#7c3aed','#0f766e'];
+const GROUP_EMOJIS = ['🗾','🏝️','💼','🏠','🎒','🍣','🚗','🎁'];
+let idc = 100;
+function newId(p){ idc+=1; return p+idc; }
+
+// ---------------------------------------------------------------------------
+// Small UI helpers
+// ---------------------------------------------------------------------------
+function Stat(p){
+  return h('div',{className:'stat-card'},
+    h('div',{className:'stat-label'},p.label),
+    h('div',{className:'stat-value'},p.value));
+}
+function Bar(p){
+  const pct = p.max>0 ? Math.max(0.04, p.amount/p.max) : 0;
+  return h('div',{className:'col gap-1 w-full'},
+    h('div',{className:'row w-full justify-between items-center'},
+      h('span',{className:'text-sm'}, (p.icon?p.icon+' ':'')+p.label),
+      h('span',{className:'text-sm font-medium'}, fmt(p.amount,p.home))),
+    h('div',{className:'bar-track'},
+      h('div',{className:'bar-fill', style:{width:(pct*100)+'%', background:p.color||'#2d5a2d'}})));
+}
+function CurrencyPicker(p){
+  return h('div',{className:'cur-scroll'},
+    CURRENCIES.map(function(c){
+      const sel = c.code===p.selected;
+      return h('div',{key:c.code, className:'cur-chip'+(sel?' cur-chip-selected':''), onClick:function(){p.onSelect(c.code);}},
+        c.symbol+' '+c.code);
+    }));
+}
+
+// ---------------------------------------------------------------------------
+// App
+// ---------------------------------------------------------------------------
+function App(){
+  const [groups, setGroups] = useState(SEED_GROUPS);
+  const [receipts, setReceipts] = useState(SEED_RECEIPTS);
+  const [settings, setSettings] = useState(SEED_SETTINGS);
+
+  const [screen, setScreen] = useState('groups');
+  const [activeGroup, setActiveGroup] = useState('');
+  const [activeReceipt, setActiveReceipt] = useState('');
+  const [editReceipt, setEditReceipt] = useState('');
+
+  const home = settings.homeCurrency;
+  const rates = settings.exchangeRates;
+
+  function groupTotal(gid){
+    return receipts.filter(function(r){return r.groupId===gid;})
+      .reduce(function(s,r){return s+toHome(r.amount,r.currency,home,rates);},0);
+  }
+  function groupCount(gid){ return receipts.filter(function(r){return r.groupId===gid;}).length; }
+
+  function saveReceipt(rec){
+    setReceipts(function(prev){
+      const exists = prev.some(function(r){return r.id===rec.id;});
+      if (exists) return prev.map(function(r){return r.id===rec.id?rec:r;});
+      return prev.concat([rec]);
+    });
+  }
+  function deleteReceipt(id){ setReceipts(function(prev){return prev.filter(function(r){return r.id!==id;});}); }
+  function addGroup(g){ setGroups(function(prev){return prev.concat([g]);}); }
+
+  let body;
+  if (screen==='groups') body = h(GroupsScreen,{groups:groups, home:home, rates:rates, receipts:receipts, groupTotal:groupTotal, groupCount:groupCount, addGroup:addGroup,
+    openGroup:function(id){setActiveGroup(id);setScreen('group_detail');}});
+  else if (screen==='group_detail') body = h(GroupDetailScreen,{groupId:activeGroup, groups:groups, receipts:receipts, home:home, rates:rates,
+    back:function(){setScreen('groups');},
+    openReceipt:function(id){setActiveReceipt(id);setScreen('receipt_detail');},
+    addReceipt:function(){setEditReceipt('');setScreen('add_receipt');}});
+  else if (screen==='add_receipt') body = h(AddReceiptScreen,{groupId:activeGroup, groups:groups, receipts:receipts, editId:editReceipt, home:home, rates:rates,
+    save:saveReceipt, done:function(){setScreen(activeGroup?'group_detail':'groups');}});
+  else if (screen==='receipt_detail') body = h(ReceiptDetailScreen,{receiptId:activeReceipt, receipts:receipts, home:home, rates:rates,
+    back:function(){setScreen('group_detail');},
+    edit:function(gid,rid){setActiveGroup(gid);setEditReceipt(rid);setScreen('add_receipt');},
+    del:function(id){deleteReceipt(id);setScreen('group_detail');}});
+  else if (screen==='insights') body = h(InsightsScreen,{groups:groups, receipts:receipts, home:home, rates:rates});
+  else if (screen==='settings') body = h(SettingsScreen,{settings:settings, setSettings:setSettings});
+
+  const navActive = (screen==='groups'||screen==='group_detail'||screen==='add_receipt'||screen==='receipt_detail') ? 'groups' : screen;
+
+  return h('div',null,
+    h('div',{className:'navbar'},
+      h('div',{className:'logo-circle'},'🧾'),
+      h('div',{className:'nav-tabs'},
+        h('button',{className:'nav-tab '+(navActive==='groups'?'nav-tab-active':'nav-tab-inactive'), onClick:function(){setScreen('groups');}},'Groups'),
+        h('button',{className:'nav-tab '+(navActive==='insights'?'nav-tab-active':'nav-tab-inactive'), onClick:function(){setScreen('insights');}},'Insights'),
+        h('button',{className:'nav-tab '+(navActive==='settings'?'nav-tab-active':'nav-tab-inactive'), onClick:function(){setScreen('settings');}},'Settings'))),
+    h('div',{className:'scrollable'}, h('div',{className:'screen', key:screen}, body)));
+}
+
+// ---------------------------------------------------------------------------
+// Groups list
+// ---------------------------------------------------------------------------
+function GroupsScreen(p){
+  const [showCreate, setShowCreate] = useState(false);
+  const [name, setName] = useState('');
+  const [desc, setDesc] = useState('');
+  const [cur, setCur] = useState(p.home);
+
+  const grand = p.receipts.reduce(function(s,r){return s+toHome(r.amount,r.currency,p.home,p.rates);},0);
+
+  function create(){
+    if (!name.trim()) return;
+    const idx = p.groups.length;
+    p.addGroup({ id:newId('g'), name:name.trim(), description:desc.trim(), defaultCurrency:cur,
+      color:GROUP_COLORS[idx%GROUP_COLORS.length], emoji:GROUP_EMOJIS[idx%GROUP_EMOJIS.length], createdAt:Date.now() });
+    setName(''); setDesc(''); setShowCreate(false);
+  }
+
+  return h('div',{className:'col gap-4 p-4'},
+    h('div',{className:'col'},
+      h('div',{className:'font-bold', style:{fontSize:'24px'}},'ReceiptVault'),
+      h('div',{className:'text-sub text-sm'},'Snap receipts. Tag purposes. Convert currencies.')),
+    h('div',{className:'row gap-2 w-full'},
+      h(Stat,{label:'Groups', value:String(p.groups.length)}),
+      h(Stat,{label:'Receipts', value:String(p.receipts.length)}),
+      h(Stat,{label:'Total ('+p.home+')', value:fmtPlain(grand,p.home)})),
+    h('div',{className:'row w-full justify-between items-center'},
+      h('div',{className:'font-bold', style:{fontSize:'16px'}},'Your Groups'),
+      h('button',{className:'btn btn-green btn-sm', onClick:function(){setShowCreate(!showCreate);}}, showCreate?'Cancel':'+ New Group')),
+    showCreate ? h('div',{className:'card col gap-3'},
+      h('div',{className:'font-medium'},'Create a group'),
+      h('input',{className:'input', placeholder:'Group name (e.g. Japan 2026)', value:name, onChange:function(e){setName(e.target.value);}}),
+      h('input',{className:'input', placeholder:'Description (optional)', value:desc, onChange:function(e){setDesc(e.target.value);}}),
+      h('div',{className:'text-sub text-sm'},'Default currency for this group'),
+      h(CurrencyPicker,{selected:cur, onSelect:setCur}),
+      h('button',{className:'btn btn-green btn-full', onClick:create},'Create Group')) : null,
+    h('div',{className:'col gap-2'},
+      p.groups.map(function(g){
+        return h('div',{key:g.id, className:'group-card', style:{borderLeftColor:g.color}, onClick:function(){p.openGroup(g.id);}},
+          h('div',{className:'row gap-3 items-center w-full'},
+            h('div',{className:'group-emoji', style:{background:g.color+'22'}}, g.emoji),
+            h('div',{className:'col flex-1'},
+              h('div',{className:'font-bold'}, g.name),
+              h('div',{className:'text-sub text-sm'}, p.groupCount(g.id)+' receipts'+(g.description?' · '+g.description:''))),
+            h('div',{className:'col items-end'},
+              h('div',{className:'font-bold', style:{fontSize:'16px'}}, fmt(p.groupTotal(g.id), p.home)),
+              h('div',{className:'text-sub text-xs'},'total'))));
+      })),
+    h('div',{className:'info-box row w-full justify-between items-center'},
+      h('span',{className:'font-medium text-sm'},'All receipts converted to '+p.home),
+      h('span',{className:'font-bold'}, fmt(grand, p.home))));
+}
+
+// ---------------------------------------------------------------------------
+// Group detail
+// ---------------------------------------------------------------------------
+function GroupDetailScreen(p){
+  let group=null;
+  for (let i=0;i<p.groups.length;i++){ if (p.groups[i].id===p.groupId) group=p.groups[i]; }
+  const list = p.receipts.filter(function(r){return r.groupId===p.groupId;}).sort(function(a,b){return b.createdAt-a.createdAt;});
+  const total = list.reduce(function(s,r){return s+toHome(r.amount,r.currency,p.home,p.rates);},0);
+
+  const byCat={};
+  list.forEach(function(r){ byCat[r.category]=(byCat[r.category]||0)+toHome(r.amount,r.currency,p.home,p.rates); });
+  const cats = Object.keys(byCat).map(function(k){return [k,byCat[k]];}).sort(function(a,b){return b[1]-a[1];});
+
+  return h('div',{className:'col gap-4 p-4'},
+    h('div',{className:'row gap-3 items-center w-full'},
+      h('button',{className:'btn btn-outline icon-btn', onClick:p.back},'←'),
+      h('span',{style:{fontSize:'22px'}}, group?group.emoji:'📁'),
+      h('div',{className:'col flex-1'},
+        h('div',{className:'font-bold', style:{fontSize:'18px'}}, group?group.name:'Group'),
+        group&&group.description?h('div',{className:'text-sub text-sm'}, group.description):null)),
+    h('div',{className:'row gap-2 w-full'},
+      h(Stat,{label:'Receipts', value:String(list.length)}),
+      h(Stat,{label:'Total ('+p.home+')', value:fmtPlain(total,p.home)}),
+      h(Stat,{label:'Default', value:group?group.defaultCurrency:p.home})),
+    cats.length?h('div',{className:'card col gap-2'},
+      h('div',{className:'font-medium text-sm'},'Spending by category'),
+      cats.slice(0,4).map(function(c){
+        return h('div',{key:c[0], className:'row w-full justify-between items-center'},
+          h('span',{className:'text-sub text-sm'}, CAT[c[0]].label),
+          h('span',{className:'font-medium text-sm'}, fmtPlain(c[1],p.home)+' '+p.home));
+      })):null,
+    h('button',{className:'btn btn-green btn-lg btn-full', onClick:p.addReceipt},'+ Add Receipt'),
+    list.length===0 ? h('div',{className:'col items-center', style:{padding:'40px 0'}},
+        h('div',{style:{fontSize:'36px'}},'🧾'), h('div',{className:'text-sub'},'No receipts in this group yet.'))
+      : h('div',{className:'col gap-2'}, list.map(function(r){return h(ReceiptRow,{key:r.id, r:r, home:p.home, rates:p.rates, onClick:function(){p.openReceipt(r.id);}});})));
+}
+
+function ReceiptRow(p){
+  const r=p.r;
+  const homeAmt = toHome(r.amount,r.currency,p.home,p.rates);
+  const foreign = r.currency!==p.home;
+  return h('div',{className:'receipt-card', onClick:p.onClick},
+    h('div',{className:'row gap-3 items-center w-full'},
+      r.image ? h('img',{className:'receipt-thumb', src:r.image})
+        : h('div',{className:'receipt-thumb-ph'}, CAT[r.category].icon),
+      h('div',{className:'col flex-1'},
+        h('div',{className:'font-medium'}, r.merchant),
+        h('div',{className:'text-sub text-sm'}, r.purpose||'No purpose noted'),
+        h('div',{className:'text-sub text-xs'}, r.purchaseDate)),
+      h('div',{className:'col items-end'},
+        h('div',{className:'font-bold', style:{fontSize:'15px'}}, fmt(r.amount,r.currency)),
+        foreign?h('div',{className:'text-sub text-xs'},'≈ '+fmtPlain(homeAmt,p.home)+' '+p.home):null)));
+}
+
+// ---------------------------------------------------------------------------
+// Add / edit receipt
+// ---------------------------------------------------------------------------
+function AddReceiptScreen(p){
+  let group=null;
+  for (let i=0;i<p.groups.length;i++){ if (p.groups[i].id===p.groupId) group=p.groups[i]; }
+  let editing=null;
+  if (p.editId){ for (let i=0;i<p.receipts.length;i++){ if (p.receipts[i].id===p.editId) editing=p.receipts[i]; } }
+
+  const initCur = editing?editing.currency:(group?group.defaultCurrency:p.home);
+  const [image,setImage]=useState(editing?editing.image:null);
+  const [merchant,setMerchant]=useState(editing?editing.merchant:'');
+  const [purpose,setPurpose]=useState(editing?editing.purpose:'');
+  const [amount,setAmount]=useState(editing?String(editing.amount):'');
+  const [currency,setCurrency]=useState(initCur);
+  const [category,setCategory]=useState(editing?editing.category:'food');
+  const [notes,setNotes]=useState(editing?editing.notes:'');
+  const [date,setDate]=useState(editing?editing.purchaseDate:new Date().toISOString().slice(0,10));
+
+  const num=parseFloat(amount)||0;
+  const homeAmt=toHome(num,currency,p.home,p.rates);
+  const showConv = currency!==p.home && num>0;
+  const canSave = merchant.trim().length>0 && num>0;
+
+  function onFile(e){
+    const f=e.target.files&&e.target.files[0];
+    if (!f) return;
+    const reader=new FileReader();
+    reader.onload=function(ev){ setImage(ev.target.result); };
+    reader.readAsDataURL(f);
+  }
+
+  function save(){
+    if (!canSave) return;
+    const id = editing?editing.id:newId('r');
+    p.save({ id:id, groupId:p.groupId, merchant:merchant.trim(), purpose:purpose.trim(), category:category,
+      amount:num, currency:currency, image:image, notes:notes.trim(), purchaseDate:date,
+      createdAt:editing?editing.createdAt:Date.now(), updatedAt:Date.now() });
+    p.done();
+  }
+
+  return h('div',{className:'col gap-4 p-4'},
+    h('div',{className:'row gap-3 items-center w-full'},
+      h('button',{className:'btn btn-outline icon-btn', onClick:p.done},'←'),
+      h('div',{className:'font-bold', style:{fontSize:'18px'}}, editing?'Edit Receipt':'Add Receipt')),
+    h('label',{htmlFor:'photo-input'},
+      image ? h('img',{className:'photo-preview', src:image})
+        : h('div',{className:'photo-drop'},
+            h('div',{style:{fontSize:'32px'}},'📷'),
+            h('div',{className:'font-medium'},'Add receipt photo'),
+            h('div',{className:'text-sub text-xs'},'Tap to pick from your library'))),
+    h('input',{id:'photo-input', type:'file', accept:'image/*', style:{display:'none'}, onChange:onFile}),
+    h('div',{className:'col gap-1'}, h('div',{className:'label'},'Merchant'),
+      h('input',{className:'input', placeholder:'e.g. Ichiran Ramen', value:merchant, onChange:function(e){setMerchant(e.target.value);}})),
+    h('div',{className:'col gap-1'}, h('div',{className:'label'},'Purpose'),
+      h('input',{className:'input', placeholder:'What was this for? e.g. Team dinner', value:purpose, onChange:function(e){setPurpose(e.target.value);}})),
+    h('div',{className:'row gap-2 w-full'},
+      h('div',{className:'col gap-1 flex-1'}, h('div',{className:'label'},'Amount'),
+        h('input',{className:'input', placeholder:'0.00', value:amount, onChange:function(e){setAmount(e.target.value);}})),
+      h('div',{className:'col gap-1 flex-1'}, h('div',{className:'label'},'Purchase date'),
+        h('input',{className:'input', placeholder:'YYYY-MM-DD', value:date, onChange:function(e){setDate(e.target.value);}}))),
+    h('div',{className:'col gap-1'}, h('div',{className:'label'},'Currency'),
+      h(CurrencyPicker,{selected:currency, onSelect:setCurrency})),
+    showConv ? h('div',{className:'info-box col gap-1'},
+      h('div',{className:'row w-full justify-between items-center'},
+        h('span',{className:'text-sm'}, fmt(num,currency)+' converts to'),
+        h('span',{className:'font-bold'}, fmt(homeAmt,p.home))),
+      h('div',{className:'text-sub text-xs'},'Rate: 1 '+p.home+' = '+(p.rates[currency]||1)+' '+currency)) : null,
+    h('div',{className:'col gap-2'}, h('div',{className:'label'},'Category'),
+      h('div',{className:'row wrap gap-2'}, CAT_KEYS.map(function(k){
+        return h('div',{key:k, className:'pill'+(category===k?' pill-selected':''), onClick:function(){setCategory(k);}},
+          h('span',null,CAT[k].icon), h('span',null,CAT[k].label));
+      }))),
+    h('div',{className:'col gap-1'}, h('div',{className:'label'},'Notes'),
+      h('input',{className:'input', placeholder:'Optional notes', value:notes, onChange:function(e){setNotes(e.target.value);}})),
+    h('button',{className:'btn btn-lg btn-full '+(canSave?'btn-green':'btn-grey'), onClick:save}, editing?'Save Changes':'Save Receipt'));
+}
+
+// ---------------------------------------------------------------------------
+// Receipt detail
+// ---------------------------------------------------------------------------
+function ReceiptDetailScreen(p){
+  const [confirm,setConfirm]=useState(false);
+  let r=null;
+  for (let i=0;i<p.receipts.length;i++){ if (p.receipts[i].id===p.receiptId) r=p.receipts[i]; }
+  if (!r) return h('div',{className:'col items-center p-4 gap-3'}, h('div',{className:'text-sub'},'Receipt not found.'),
+    h('button',{className:'btn btn-outline', onClick:p.back},'← Back'));
+
+  const homeAmt=toHome(r.amount,r.currency,p.home,p.rates);
+  const foreign=r.currency!==p.home;
+
+  function info(label,val){ return h('div',{className:'row w-full justify-between items-center'},
+    h('span',{className:'text-sub text-sm'},label), h('span',{className:'font-medium text-sm'},val)); }
+
+  return h('div',{className:'col gap-4 p-4'},
+    h('div',{className:'row w-full justify-between items-center'},
+      h('div',{className:'row gap-3 items-center flex-1'},
+        h('button',{className:'btn btn-outline icon-btn', onClick:p.back},'←'),
+        h('div',{className:'font-bold', style:{fontSize:'18px'}},'Receipt')),
+      h('button',{className:'btn btn-outline btn-sm', onClick:function(){p.edit(r.groupId,r.id);}},'Edit')),
+    r.image ? h('img',{className:'detail-img', src:r.image})
+      : h('div',{className:'photo-drop', style:{border:'2px dashed var(--border)', background:'var(--bg)'}},
+          h('div',{style:{fontSize:'28px'}},'🧾'), h('div',{className:'text-sub text-sm'},'No photo attached')),
+    h('div',{className:'col items-center gap-1'},
+      h('div',{className:'font-bold', style:{fontSize:'22px'}}, r.merchant),
+      h('div',{className:'font-bold', style:{fontSize:'28px'}}, fmt(r.amount,r.currency)),
+      foreign?h('div',{className:'text-sub'},'≈ '+fmt(homeAmt,p.home)+' ('+p.home+')'):null),
+    h('div',{className:'center'}, h('div',{className:'pill pill-selected'}, h('span',null,CAT[r.category].icon), h('span',null,CAT[r.category].label))),
+    h('div',{className:'card col gap-2'},
+      info('Purpose', r.purpose||'—'),
+      h('div',{className:'divider'}),
+      info('Purchase date', r.purchaseDate),
+      h('div',{className:'divider'}),
+      info('Original amount', fmt(r.amount,r.currency)),
+      foreign?h('div',{className:'divider'}):null,
+      foreign?info('Converted ('+p.home+')', fmt(homeAmt,p.home)):null,
+      foreign?h('div',{className:'divider'}):null,
+      foreign?info('Exchange rate', '1 '+p.home+' = '+(p.rates[r.currency]||1)+' '+r.currency):null),
+    r.notes?h('div',{className:'card col gap-1'}, h('div',{className:'text-sub text-sm'},'Notes'), h('div',null,r.notes)):null,
+    confirm ? h('div',{className:'row gap-2 w-full'},
+      h('button',{className:'btn btn-outline flex-1', onClick:function(){setConfirm(false);}},'Cancel'),
+      h('button',{className:'btn btn-red flex-1', onClick:function(){p.del(r.id);}},'Confirm Delete'))
+      : h('button',{className:'btn btn-red btn-full', onClick:function(){setConfirm(true);}},'Delete Receipt'));
+}
+
+// ---------------------------------------------------------------------------
+// Insights
+// ---------------------------------------------------------------------------
+function InsightsScreen(p){
+  const total=p.receipts.reduce(function(s,r){return s+toHome(r.amount,r.currency,p.home,p.rates);},0);
+  const byCat={}, byCur={}, byGroup={};
+  p.receipts.forEach(function(r){
+    const ha=toHome(r.amount,r.currency,p.home,p.rates);
+    byCat[r.category]=(byCat[r.category]||0)+ha;
+    byCur[r.currency]=(byCur[r.currency]||0)+ha;
+    byGroup[r.groupId]=(byGroup[r.groupId]||0)+ha;
+  });
+  function sortEntries(o){ return Object.keys(o).map(function(k){return [k,o[k]];}).sort(function(a,b){return b[1]-a[1];}); }
+  const cats=sortEntries(byCat), curs=sortEntries(byCur), grps=sortEntries(byGroup);
+  const maxCat=cats.length?cats[0][1]:0, maxGrp=grps.length?grps[0][1]:0;
+  const avg=p.receipts.length?total/p.receipts.length:0;
+  function gName(id){ for(let i=0;i<p.groups.length;i++){ if(p.groups[i].id===id) return p.groups[i].emoji+' '+p.groups[i].name; } return 'Unknown'; }
+
+  return h('div',{className:'col gap-4 p-4'},
+    h('div',{className:'col'},
+      h('div',{className:'font-bold', style:{fontSize:'22px'}},'Insights'),
+      h('div',{className:'text-sub text-sm'},'All amounts converted to '+p.home)),
+    h('div',{className:'row gap-2 w-full'},
+      h(Stat,{label:'Total ('+p.home+')', value:fmtPlain(total,p.home)}),
+      h(Stat,{label:'Receipts', value:String(p.receipts.length)}),
+      h(Stat,{label:'Avg/Receipt', value:fmtPlain(avg,p.home)})),
+    h('div',{className:'card col gap-3'},
+      h('div',{className:'font-bold', style:{fontSize:'15px'}},'By Category'),
+      cats.map(function(c){return h(Bar,{key:c[0], label:CAT[c[0]].label, icon:CAT[c[0]].icon, amount:c[1], max:maxCat, home:p.home});})),
+    h('div',{className:'card col gap-3'},
+      h('div',{className:'font-bold', style:{fontSize:'15px'}},'By Group'),
+      grps.map(function(c){return h(Bar,{key:c[0], label:gName(c[0]), amount:c[1], max:maxGrp, home:p.home, color:'#1d4ed8'});})),
+    h('div',{className:'card col gap-2'},
+      h('div',{className:'font-bold', style:{fontSize:'15px'}},'By Currency Spent'),
+      curs.map(function(c){return h('div',{key:c[0], className:'row w-full justify-between items-center'},
+        h('span',{className:'text-sm'},c[0]), h('span',{className:'font-medium text-sm'}, fmt(c[1],p.home)));})));
+}
+
+// ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+function SettingsScreen(p){
+  const home=p.settings.homeCurrency;
+  const rates=p.settings.exchangeRates;
+
+  function setHome(code){ p.setSettings(Object.assign({}, p.settings, {homeCurrency:code})); }
+  function setRate(code,val){
+    const parsed=parseFloat(val);
+    if (isNaN(parsed)||parsed<=0) return;
+    const nr=Object.assign({}, rates); nr[code]=parsed;
+    p.setSettings(Object.assign({}, p.settings, {exchangeRates:nr}));
+  }
+
+  return h('div',{className:'col gap-4 p-4'},
+    h('div',{className:'font-bold', style:{fontSize:'22px'}},'Settings'),
+    h('div',{className:'card col gap-2'},
+      h('div',{className:'font-bold', style:{fontSize:'15px'}},'Home Currency'),
+      h('div',{className:'text-sub text-sm'},'All totals are converted into this currency.'),
+      h(CurrencyPicker,{selected:home, onSelect:setHome})),
+    h('div',{className:'card col gap-3'},
+      h('div',{className:'col'},
+        h('div',{className:'font-bold', style:{fontSize:'15px'}},'Exchange Rates'),
+        h('div',{className:'text-sub text-sm'},'Units of each currency per 1 '+home+'. Edit to update.')),
+      CURRENCIES.filter(function(c){return c.code!==home;}).map(function(c){
+        return h('div',{key:c.code, className:'row w-full justify-between items-center'},
+          h('span',{className:'font-medium text-sm'},'1 '+home+' ='),
+          h('div',{className:'row gap-2 items-center'},
+            h('input',{className:'input text-right', style:{width:'96px'}, defaultValue:String(rates[c.code]||''),
+              onBlur:function(e){setRate(c.code,e.target.value);}}),
+            h('span',{className:'font-medium text-sm', style:{width:'40px'}}, c.code)));
+      }),
+      h('div',{className:'text-sub text-xs'},'In production these auto-refresh from an FX API. Here you can set them manually so conversions stay accurate offline.')),
+    h('div',{className:'card col gap-2'},
+      h('div',{className:'font-bold', style:{fontSize:'15px'}},'Account'),
+      h('div',{className:'row w-full justify-between items-center'},
+        h('span',{className:'text-sub text-sm'},'Data scope'),
+        h('span',{className:'font-medium text-sm'},'Private (per user)'))),
+    h('div',{className:'info-box col gap-1'},
+      h('div',{className:'font-medium text-sm'},'How your data is stored'),
+      h('div',{className:'text-sub text-xs'},'Every group and receipt is saved per user via Paper\'s userVariables system (useUserList / useUserVariable), synced in real time and private to your account.')));
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+</script>
+<script>
+  var src = document.getElementById('app-source').textContent;
+  var out = Babel.transform(src, { presets: [['react', { runtime: 'classic' }]] });
+  eval(out.code);
+</script>
+</body>
+</html>

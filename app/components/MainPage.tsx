@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import PoppinsText from './ui/text/PoppinsText';
 import AppButton from './ui/buttons/AppButton';
 import Row from './layout/Row';
+import Column from './layout/Column';
 import { useUserVariable } from 'hooks/useUserVariable';
 import { useSyncUserData } from 'hooks/useSyncUserData';
 import { UserData } from 'types/mathDocuments';
@@ -11,8 +12,9 @@ import DocumentHomePage from './document/DocumentHomePage';
 import DocumentEditorPage from './document/DocumentEditorPage';
 import LayoutStateAnimatedView from './ui/LayoutStateAnimatedView';
 import FairRideMainPage from './fairride/FairRideMainPage';
+import ReceiptVaultMainPage from './receipts/ReceiptVaultMainPage';
 
-type AppMode = 'paper' | 'fairride';
+type AppMode = 'paper' | 'fairride' | 'receipts';
 type ScreenState = 'documents' | 'document';
 
 interface MainPageProps extends PropsWithChildren {
@@ -60,6 +62,23 @@ const MainPage: React.FC<MainPageProps> = () => {
     );
   }
 
+  if (appMode === 'receipts') {
+    return (
+      <View className="p-safe bg-background h-screen w-screen">
+        <View className="border-border bg-inner-background border-b-2 px-4 py-1">
+          <Row gap={2} className="items-center justify-between">
+            <AppButton variant="outline" className="h-8 px-3" onPress={() => setAppMode('paper')}>
+              <PoppinsText style={{ fontSize: 12 }}>← Paper</PoppinsText>
+            </AppButton>
+            <PoppinsText weight="bold">ReceiptVault</PoppinsText>
+            <View className="w-16" />
+          </Row>
+        </View>
+        <ReceiptVaultMainPage />
+      </View>
+    );
+  }
+
   return (
     <View className="p-safe h-screen w-screen">
       <TopSiteBar
@@ -79,14 +98,24 @@ const MainPage: React.FC<MainPageProps> = () => {
               <View className="h-full w-full">
                 <DocumentHomePage userId={userId} setActiveDocumentId={setActiveDocumentId} />
                 <View className="absolute bottom-4 right-4">
-                  <AppButton
-                    variant="green"
-                    className="h-12 rounded-full px-4"
-                    onPress={() => setAppMode('fairride')}>
-                    <PoppinsText color="white" weight="bold">
-                      FairRide →
-                    </PoppinsText>
-                  </AppButton>
+                  <Column gap={2} className="items-end">
+                    <AppButton
+                      variant="green"
+                      className="h-12 rounded-full px-4"
+                      onPress={() => setAppMode('receipts')}>
+                      <PoppinsText color="white" weight="bold">
+                        ReceiptVault →
+                      </PoppinsText>
+                    </AppButton>
+                    <AppButton
+                      variant="green"
+                      className="h-12 rounded-full px-4"
+                      onPress={() => setAppMode('fairride')}>
+                      <PoppinsText color="white" weight="bold">
+                        FairRide →
+                      </PoppinsText>
+                    </AppButton>
+                  </Column>
                 </View>
               </View>
             </View>
