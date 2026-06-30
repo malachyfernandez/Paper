@@ -6,9 +6,11 @@ import Row from '../../layout/Row';
 import PoppinsTextInput from '../../ui/forms/PoppinsTextInput';
 import CurrencyPicker from '../shared/CurrencyPicker';
 import { useUserVariable } from '../../../../hooks/useUserVariable';
+import AppButton from '../../ui/buttons/AppButton';
 import {
   ReceiptSettings,
   DEFAULT_SETTINGS,
+  DEFAULT_AI_MODEL,
   ReceiptUserData,
   COMMON_CURRENCIES,
   CurrencyCode,
@@ -31,6 +33,16 @@ const SettingsPage = () => {
   const rates = settings.value.exchangeRates;
 
   const [rateDrafts, setRateDrafts] = useState<Record<string, string>>({});
+  const [keyDraft, setKeyDraft] = useState(settings.value.openRouterKey ?? '');
+
+  const commitKey = () => {
+    setSettings({ ...settings.value, openRouterKey: keyDraft.trim() });
+  };
+  const clearKey = () => {
+    setKeyDraft('');
+    setSettings({ ...settings.value, openRouterKey: '' });
+  };
+  const hasKey = (settings.value.openRouterKey ?? '').length > 0;
 
   const handleSetHome = (code: CurrencyCode) => {
     setSettings({ ...settings.value, homeCurrency: code });
@@ -59,6 +71,42 @@ const SettingsPage = () => {
         <PoppinsText weight="bold" style={{ fontSize: 22 }}>
           Settings
         </PoppinsText>
+
+        <View className="border-border bg-inner-background rounded border-2 p-4">
+          <Column gap={2}>
+            <PoppinsText weight="bold" style={{ fontSize: 15 }}>
+              🔑 AI Receipt Scanning
+            </PoppinsText>
+            <PoppinsText varient="subtext" style={{ fontSize: 12 }}>
+              Paste an OpenRouter API key to scan receipts with AI. The request runs client-side
+              from your device — the key is stored privately and never sent to a ReceiptVault
+              server.
+            </PoppinsText>
+            <PoppinsTextInput
+              value={keyDraft}
+              onChangeText={setKeyDraft}
+              onBlur={commitKey}
+              placeholder="sk-or-v1-… (leave blank for none)"
+              secureTextEntry
+              className="border-border border-2 bg-transparent px-3 py-2"
+            />
+            <Row gap={2} className="w-full">
+              <AppButton variant="outline" className="h-10 flex-1" onPress={clearKey}>
+                <PoppinsText>Clear</PoppinsText>
+              </AppButton>
+              <AppButton variant="green" className="h-10 flex-1" onPress={commitKey}>
+                <PoppinsText color="white" weight="bold">
+                  Save key
+                </PoppinsText>
+              </AppButton>
+            </Row>
+            <PoppinsText varient="subtext" style={{ fontSize: 11 }}>
+              {hasKey
+                ? `Active · model ${settings.value.aiModel || DEFAULT_AI_MODEL}`
+                : 'No key set — AI scanning is disabled.'}
+            </PoppinsText>
+          </Column>
+        </View>
 
         <View className="border-border bg-inner-background rounded border-2 p-4">
           <Column gap={2}>
@@ -143,9 +191,8 @@ const SettingsPage = () => {
               How your data is stored
             </PoppinsText>
             <PoppinsText varient="subtext" style={{ fontSize: 11 }}>
-              Every group and receipt is saved per user via Paper&apos;s userVariables
-              system (useUserList / useUserVariable), synced in real time and private to
-              your account.
+              Every group and receipt is saved per user via Paper&apos;s userVariables system
+              (useUserList / useUserVariable), synced in real time and private to your account.
             </PoppinsText>
           </Column>
         </View>

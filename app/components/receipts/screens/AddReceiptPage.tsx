@@ -8,19 +8,25 @@ import PoppinsTextInput from '../../ui/forms/PoppinsTextInput';
 import PhotoPickerButton from '../shared/PhotoPickerButton';
 import CurrencyPicker from '../shared/CurrencyPicker';
 import CategoryPill from '../shared/CategoryPill';
+import ScanningOverlay from '../shared/ScanningOverlay';
 import { useUserVariable } from '../../../../hooks/useUserVariable';
 import { useUserListGet } from '../../../../hooks/useUserListGet';
 import { useUserListSet } from '../../../../hooks/useUserListSet';
+import { useToast } from '../../../../contexts/ToastContext';
 import { generateId } from '../../../../utils/generateId';
 import { convertToHome, formatMoney } from '../../../../utils/currencyConversion';
+import { scanReceiptWithAI, imageUriToDataUrl, OpenRouterError } from '../services/openRouterAI';
 import {
   Receipt,
   ReceiptImage,
   ReceiptGroup,
   ReceiptSettings,
+  ReceiptScanResult,
   DEFAULT_SETTINGS,
+  DEFAULT_AI_MODEL,
   ReceiptCategory,
   ALL_CATEGORIES,
+  COMMON_CURRENCIES,
   CurrencyCode,
 } from '../../../../types/receipts';
 
@@ -54,7 +60,12 @@ const AddReceiptPage = ({ groupId, editReceiptId, onDone }: AddReceiptPageProps)
   const rates = settings.value.exchangeRates;
   const initialCurrency = group ? group.defaultCurrency : home;
 
+  const { showToast } = useToast();
+
   const [image, setImage] = useState<ReceiptImage | undefined>(editing?.image);
+  const [imageDataUrl, setImageDataUrl] = useState<string | undefined>(undefined);
+  const [scanning, setScanning] = useState(false);
+  const [scanStatus, setScanStatus] = useState('');
   const [merchant, setMerchant] = useState(editing?.merchant ?? '');
   const [purpose, setPurpose] = useState(editing?.purpose ?? '');
   const [amount, setAmount] = useState(editing ? String(editing.amount) : '');
@@ -68,6 +79,52 @@ const AddReceiptPage = ({ groupId, editReceiptId, onDone }: AddReceiptPageProps)
   const showConversion = currency !== home && numericAmount > 0;
 
   const canSave = merchant.trim().length > 0 && numericAmount > 0;
+
+  const apiKey = settings.value.openRouterKey ?? '';
+  const model = settings.value.aiModel || DEFAULT_AI_MODEL;
+
+  const handlePicked = (img: ReceiptImage, dataUrl?: string) => {
+    setImage(img);
+    setImageDataUrl(dataUrl ?? img.url);
+  };
+
+  const applyScan = (result: ReceiptScanResult) => {
+    if (result.merchant) setMerchant(result.merchant);
+    if (result.purpose) setPurpose(result.purpose);
+    if (result.amount != null) setAmount(String(result.amount));
+    if (result.currency && COMMON_CURRENCIES.some((c) => c.code === result.currency)) {
+      setCurrency(result.currency);
+    }
+    if (result.category) setCategory(result.category);
+    if (result.purchaseDate) setPurchaseDate(result.purchaseDate);
+    if (result.notes) setNotes(result.notes);
+  };
+
+  const handleScan = async () => {
+    if (!image) {
+      showToast('Add a photo first.');
+      return;
+    }
+    if (!apiKey) {
+      showToast('Add an OpenRouter key in Settings to scan receipts.');
+      return;
+    }
+    const source = imageDataUrl ?? image.url;
+    setScanning(true);
+    setScanStatus('Reading receipt');
+    try {
+      const dataUrl = await imageUriToDataUrl(source);
+      setScanStatus('Extracting fields');
+      const result = await scanReceiptWithAI(dataUrl, apiKey, model);
+      applyScan(result);
+      showToast('Autofilled by AI ✨');
+    } catch (err) {
+      const msg = err instanceof OpenRouterError ? err.message : 'AI scan failed.';
+      showToast(msg);
+    } finally {
+      setScanning(false);
+    }
+  };
 
   const handleSave = () => {
     if (!canSave) return;
@@ -116,7 +173,33 @@ const AddReceiptPage = ({ groupId, editReceiptId, onDone }: AddReceiptPageProps)
           </PoppinsText>
         </Row>
 
-        <PhotoPickerButton image={image} onPicked={setImage} />
+        <View>
+          <PhotoPickerButton image={image} onPicked={handlePicked} />
+          {scanning && (
+            <ScanningOverlay
+              height={180}
+              status={scanStatus}
+              subtitle="via OpenRouter · on-device"
+            />
+          )}
+        </View>
+
+        <Row gap={2} className="w-full items-center">
+          <AppButton
+            variant={image && !scanning ? 'green' : 'grey'}
+            className="h-11 flex-1"
+            onPress={handleScan}
+            disabled={!image || scanning}>
+            <PoppinsText color="white" weight="bold">
+              {scanning ? 'Scanning…' : '✨ Scan with AI'}
+            </PoppinsText>
+          </AppButton>
+        </Row>
+        <PoppinsText varient="subtext" style={{ fontSize: 11 }}>
+          {apiKey
+            ? 'Using your OpenRouter key — the request runs in your browser.'
+            : 'Add an OpenRouter key in Settings to enable AI scanning.'}
+        </PoppinsText>
 
         <Column gap={1}>
           <PoppinsText weight="medium" style={{ fontSize: 13 }}>

@@ -7,7 +7,8 @@ import { ReceiptImage } from '../../../../types/receipts';
 
 interface PhotoPickerButtonProps {
   image?: ReceiptImage;
-  onPicked: (image: ReceiptImage) => void;
+  // `dataUrl` is a base64 data URL of the picked image, ready for AI scanning.
+  onPicked: (image: ReceiptImage, dataUrl?: string) => void;
   height?: number;
 }
 
@@ -26,12 +27,16 @@ const PhotoPickerButton = ({ image, onPicked, height = 180 }: PhotoPickerButtonP
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
       allowsEditing: false,
+      base64: true,
     });
 
     if (result.canceled || result.assets.length === 0) return;
 
     const asset = result.assets[0];
-    onPicked({ url: asset.uri, width: asset.width, height: asset.height });
+    const dataUrl = asset.base64
+      ? `data:${asset.mimeType ?? 'image/jpeg'};base64,${asset.base64}`
+      : asset.uri;
+    onPicked({ url: asset.uri, width: asset.width, height: asset.height }, dataUrl);
   };
 
   return (

@@ -54,7 +54,27 @@ export type ReceiptSettings = {
   // Rates: how many units of the keyed currency equal 1 home-currency unit.
   exchangeRates: ExchangeRates;
   lastRatesUpdate: number;
+  // Optional OpenRouter API key for client-side AI receipt scanning. Stored
+  // PRIVATE per user; the request is made directly from the client so the key
+  // never touches a ReceiptVault/Convex server.
+  openRouterKey?: string;
+  // Vision model used for scanning. Defaults to a fast, cheap multimodal model.
+  aiModel?: string;
 };
+
+// Result returned by the AI receipt scanner. All fields optional — the model
+// fills in whatever it can read.
+export type ReceiptScanResult = {
+  merchant?: string;
+  amount?: number;
+  currency?: CurrencyCode;
+  category?: ReceiptCategory;
+  purchaseDate?: string;
+  purpose?: string;
+  notes?: string;
+};
+
+export const DEFAULT_AI_MODEL = 'google/gemini-2.0-flash-001';
 
 export const DEFAULT_SETTINGS: ReceiptSettings = {
   homeCurrency: 'USD',
