@@ -1,5 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing,
+  interpolate,
+} from 'react-native-reanimated';
 import PoppinsText from '../../ui/text/PoppinsText';
 import Column from '../../layout/Column';
 import type { LatLng } from '../../../../types/fairride';
@@ -12,6 +20,37 @@ interface MapPlaceholderProps {
   className?: string;
 }
 
+const PulsingPin = () => {
+  const pulse = useSharedValue(0);
+
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withTiming(1, { duration: 2200, easing: Easing.out(Easing.ease) }),
+      -1,
+      false
+    );
+  }, [pulse]);
+
+  const ringStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(pulse.value, [0, 1], [0.7, 2.6]) }],
+    opacity: interpolate(pulse.value, [0, 0.7, 1], [0.5, 0.08, 0]),
+  }));
+
+  return (
+    <View className="h-12 w-12 items-center justify-center">
+      <Animated.View
+        className="bg-primary-accent absolute h-12 w-12 rounded-full"
+        style={ringStyle}
+      />
+      <View className="bg-primary-accent h-12 w-12 items-center justify-center rounded-full">
+        <PoppinsText color="white" weight="bold">
+          MAP
+        </PoppinsText>
+      </View>
+    </View>
+  );
+};
+
 const MapPlaceholder = ({
   center,
   driverLocation,
@@ -21,13 +60,9 @@ const MapPlaceholder = ({
 }: MapPlaceholderProps) => {
   return (
     <View
-      className={`border-border items-center justify-center rounded border-2 bg-[#e8e0d0] ${className}`}>
+      className={`border-border items-center justify-center overflow-hidden rounded-2xl border bg-[#e2e8e2] ${className}`}>
       <Column gap={2} className="items-center">
-        <View className="bg-primary-accent h-12 w-12 items-center justify-center rounded-full">
-          <PoppinsText color="white" weight="bold">
-            MAP
-          </PoppinsText>
-        </View>
+        <PulsingPin />
         <PoppinsText varient="subtext">Interactive map</PoppinsText>
         {center && (
           <PoppinsText varient="subtext">

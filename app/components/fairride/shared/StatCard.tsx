@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import PoppinsText from '../../ui/text/PoppinsText';
 import Column from '../../layout/Column';
 
@@ -7,12 +7,19 @@ interface StatCardProps {
   label: string;
   value: string;
   subtitle?: string;
+  /** Stagger index for the entrance cascade. */
+  index?: number;
   className?: string;
 }
 
-const StatCard = ({ label, value, subtitle, className = '' }: StatCardProps) => {
+const StatCard = ({ label, value, subtitle, index = 0, className = '' }: StatCardProps) => {
   return (
-    <View className={`border-border bg-inner-background flex-1 rounded border-2 p-3 ${className}`}>
+    <Animated.View
+      entering={FadeInDown.delay(index * 80)
+        .duration(400)
+        .springify()
+        .damping(15)}
+      className={`border-border bg-inner-background flex-1 rounded-xl border p-3 ${className}`}>
       <Column gap={1} className="items-center">
         <PoppinsText varient="subtext" weight="medium">
           {label}
@@ -22,7 +29,7 @@ const StatCard = ({ label, value, subtitle, className = '' }: StatCardProps) => 
         </PoppinsText>
         {subtitle && <PoppinsText varient="subtext">{subtitle}</PoppinsText>}
       </Column>
-    </View>
+    </Animated.View>
   );
 };
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import PoppinsText from '../ui/text/PoppinsText';
 import AppButton from '../ui/buttons/AppButton';
 import Column from '../layout/Column';
@@ -186,7 +187,9 @@ const FairRideMainPage = () => {
           onNotValue={{ opacity: [1, 0], x: [0, -50], duration: 200 }}>
           <View className="flex-1">
             <RiderNavBar currentScreen={riderScreen} onNavigate={handleRiderNavigate} />
-            {renderRiderScreen()}
+            <Animated.View key={riderScreen} entering={FadeIn.duration(260)} className="flex-1">
+              {renderRiderScreen()}
+            </Animated.View>
           </View>
         </StateAnimatedView.Option>
 
@@ -196,7 +199,9 @@ const FairRideMainPage = () => {
           onNotValue={{ opacity: [1, 0], x: [0, -50], duration: 200 }}>
           <View className="flex-1">
             <DriverNavBar currentScreen={driverScreen} onNavigate={handleDriverNavigate} />
-            {renderDriverScreen()}
+            <Animated.View key={driverScreen} entering={FadeIn.duration(260)} className="flex-1">
+              {renderDriverScreen()}
+            </Animated.View>
           </View>
         </StateAnimatedView.Option>
       </StateAnimatedView.Container>

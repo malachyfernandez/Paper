@@ -7,6 +7,7 @@ import Row from '../../layout/Row';
 import MapPlaceholder from '../shared/MapPlaceholder';
 import LocationInput from '../shared/LocationInput';
 import RideTypeSelector from '../shared/RideTypeSelector';
+import EnterView from '../shared/EnterView';
 import FareBreakdownCard from '../shared/FareBreakdownCard';
 import UserAvatar from '../shared/UserAvatar';
 import { useUserVariable } from '../../../../hooks/useUserVariable';
@@ -120,14 +121,16 @@ const RiderHomePage = ({ onNavigate }: RiderHomePageProps) => {
           </AppButton>
         </Row>
 
-        <MapPlaceholder
-          center={pickup}
-          pickupLocation={pickup}
-          dropoffLocation={showFareEstimate ? dropoff : undefined}
-          className="h-48 w-full"
-        />
+        <EnterView index={0}>
+          <MapPlaceholder
+            center={pickup}
+            pickupLocation={pickup}
+            dropoffLocation={showFareEstimate ? dropoff : undefined}
+            className="h-48 w-full"
+          />
+        </EnterView>
 
-        <View className="border-border bg-inner-background rounded border-2 p-4">
+        <EnterView index={1} className="border-border bg-inner-background rounded-2xl border p-4">
           <Column gap={3}>
             <LocationInput
               label="Pickup"
@@ -147,13 +150,15 @@ const RiderHomePage = ({ onNavigate }: RiderHomePageProps) => {
               placeholder="Where to?"
             />
           </Column>
-        </View>
+        </EnterView>
 
-        <RideTypeSelector
-          selected={selectedRideType}
-          onSelect={setSelectedRideType}
-          estimates={estimates}
-        />
+        <EnterView index={2}>
+          <RideTypeSelector
+            selected={selectedRideType}
+            onSelect={setSelectedRideType}
+            estimates={estimates}
+          />
+        </EnterView>
 
         {!showFareEstimate ? (
           <AppButton variant="green" className="h-14" onPress={handleEstimateFare}>
