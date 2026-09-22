@@ -25,3 +25,9 @@ android
 .env*
 !.env.example
 .vercel
+
+# Local session/preview scratch files
+SESSION_CONTEXT.md
+app/components/document/AiPromptInputPreview.tsx
+app/components/document/ChatOptionsDialogPreview.tsx
+app/components/document/ContentPreviewPreview.tsx

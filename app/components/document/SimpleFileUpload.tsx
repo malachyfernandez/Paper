@@ -9,36 +9,19 @@ import Column from '../layout/Column';
 import Row from '../layout/Row';
 import AppButton from '../ui/buttons/AppButton';
 import PoppinsText from '../ui/text/PoppinsText';
-import { prepareImageForUpload, prepareWebFileForUpload, UploadThingReactNativeFile } from '../../../utils/imageCompression';
-import { renderPdfFileToImages, isPdfFile } from '../../../utils/pdfToImages';
+import { prepareImageForUpload } from '../../../utils/imageCompression';
+import {
+    uploadWebFiles,
+    uploadFileToPresignedUrl,
+    withTimeout,
+    UploadThingSignedUpload,
+} from './uploadWebFiles';
 
 interface SimpleFileUploadProps {
     onFilesReady: (files: Array<{ id: string; previewUrl: string; file: File; uploadedUrl?: string }>) => void;
     buttonLabel?: string;
     className?: string;
 }
-
-interface UploadThingSignedUpload {
-    url: string;
-    key: string;
-}
-
-interface UploadThingUploadedFileResponse {
-    url: string;
-    appUrl: string;
-    ufsUrl: string;
-}
-
-const UPLOAD_TIMEOUT_MS = 90000;
-
-const withTimeout = async <T,>(promise: Promise<T>, message: string, timeoutMs: number = UPLOAD_TIMEOUT_MS) => {
-    return await Promise.race([
-        promise,
-        new Promise<T>((_, reject) => {
-            setTimeout(() => reject(new Error(message)), timeoutMs);
-        }),
-    ]);
-};
 
 const getUploadErrorMessage = (error: unknown) => {
     if (error instanceof Error && error.message.trim()) {
@@ -86,40 +69,6 @@ const pickWebFile = async () => {
     });
 };
 
-const uploadFileToPresignedUrl = async (
-    file: UploadThingReactNativeFile,
-    signedUpload: UploadThingSignedUpload,
-) => {
-    return new Promise<UploadThingUploadedFileResponse>(async (resolve, reject) => {
-        const formData = new FormData();
-
-        if (file.file) {
-            formData.append('file', file.file);
-        } else {
-            // Create a blob from the URI for React Native
-            const response = await fetch(file.uri);
-            const blob = await response.blob();
-            formData.append('file', blob, file.name);
-        }
-
-        const xhr = new XMLHttpRequest();
-        xhr.open('PUT', signedUpload.url, true);
-        xhr.setRequestHeader('Range', 'bytes=0-');
-        xhr.setRequestHeader('x-uploadthing-version', '7.7.4');
-        xhr.responseType = 'json';
-        xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                resolve(xhr.response as UploadThingUploadedFileResponse);
-                return;
-            }
-
-            reject(new Error(xhr.responseText));
-        };
-        xhr.onerror = () => reject(new Error('Network error'));
-        xhr.send(formData);
-    });
-};
-
 const SimpleFileUpload = ({ onFilesReady, buttonLabel = 'Upload File', className = 'h-12 px-5' }: SimpleFileUploadProps) => {
     const [isUploading, setIsUploading] = useState(false);
     const [isButtonClicked, setIsButtonClicked] = useState(false);
@@ -147,98 +96,16 @@ const SimpleFileUpload = ({ onFilesReady, buttonLabel = 'Upload File', className
                 console.log('🔍 [UPLOAD_DEBUG] File selected:', selectedFile.name, selectedFile.type);
                 setIsUploading(true);
 
-                // Check if it's a PDF
-                if (isPdfFile(selectedFile)) {
-                    console.log('🔍 [UPLOAD_DEBUG] Detected PDF file, starting PDF processing');
-                    setStatusMessage('Rendering PDF pages...');
-                    try {
-                        const renderedPages = await renderPdfFileToImages(selectedFile);
-                        console.log('✅ [UPLOAD_DEBUG] PDF rendered successfully:', renderedPages.length, 'pages');
-                        setStatusMessage(`Uploading ${renderedPages.length} pages...`);
-                        
-                        const uploadedPages = await Promise.all(
-                            renderedPages.map(async (page, index) => {
-                                console.log(`🔍 [UPLOAD_DEBUG] Processing page ${index + 1} in parallel...`);
-                                
-                                const preparedFile = await withTimeout(
-                                    prepareWebFileForUpload(page.file),
-                                    'Preparing the image took too long. Please try a smaller image.',
-                                );
+                const uploadedFiles = await uploadWebFiles(
+                    [selectedFile],
+                    (args) => generatePublicImageUploadUrl(args) as Promise<UploadThingSignedUpload>,
+                    setStatusMessage,
+                );
 
-                                const signedUpload = await withTimeout(
-                                    generatePublicImageUploadUrl({
-                                        name: preparedFile.name,
-                                        size: preparedFile.size,
-                                        type: preparedFile.type,
-                                        lastModified: preparedFile.lastModified,
-                                    }) as Promise<UploadThingSignedUpload>, 
-                                    'Generating the upload URL took too long. Please try again.'
-                                );
-
-                                const uploadedFile = await withTimeout(
-                                    uploadFileToPresignedUrl(preparedFile, signedUpload),
-                                    'Uploading the image took too long. Please try again.',
-                                );
-                                
-                                const publicUrl = uploadedFile.ufsUrl ?? uploadedFile.url;
-
-                                if (!publicUrl) {
-                                    throw new Error('Upload completed but no public image URL was returned.');
-                                }
-
-                                console.log(`✅ [UPLOAD_DEBUG] Page ${index + 1} uploaded successfully`);
-
-                                return {
-                                    id: page.id,
-                                    previewUrl: page.previewUrl,
-                                    file: page.file,
-                                    uploadedUrl: publicUrl,
-                                };
-                            })
-                        );
-
-                        onFilesReady(uploadedPages);
-                        setStatusMessage('');
-                        return;
-                    } catch (pdfError) {
-                        throw pdfError;
-                    }
-                } else {
-                    // Handle image file
-                    const preparedFile = await withTimeout(
-                        prepareWebFileForUpload(selectedFile),
-                        'Preparing the image took too long. Please try a smaller image.',
-                    );
-
-                    const signedUpload = await withTimeout(
-                        generatePublicImageUploadUrl({
-                            name: preparedFile.name,
-                            size: preparedFile.size,
-                            type: preparedFile.type,
-                            lastModified: preparedFile.lastModified,
-                        }) as Promise<UploadThingSignedUpload>, 
-                        'Generating the upload URL took too long. Please try again.'
-                    );
-
-                    const uploadedFile = await withTimeout(
-                        uploadFileToPresignedUrl(preparedFile, signedUpload),
-                        'Uploading the image took too long. Please try again.',
-                    );
-                    
-                    const publicUrl = uploadedFile.ufsUrl ?? uploadedFile.url;
-
-                    if (!publicUrl) {
-                        throw new Error('Upload completed but no public image URL was returned.');
-                    }
-
-                    onFilesReady([{
-                        id: preparedFile.name,
-                        previewUrl: publicUrl,
-                        file: selectedFile,
-                        uploadedUrl: publicUrl, // Add the uploaded URL!
-                    }]);
-                    return;
-                }
+                console.log('✅ [UPLOAD_DEBUG] Upload finished:', uploadedFiles.length, 'file(s)');
+                onFilesReady(uploadedFiles);
+                setStatusMessage('');
+                return;
             }
 
             // Native (iOS/Android) - only support images for now
