@@ -16,6 +16,7 @@ interface ViewOnlyDocumentHeaderProps {
     documentDescription: string;
     pageCount: number;
     onDownloadPdf: () => void;
+    onDownloadMarkdown: () => void;
     onZoomIn: () => void;
     onZoomOut: () => void;
     zoomLevel: number;
@@ -33,6 +34,7 @@ const ViewOnlyDocumentHeader = ({
     documentDescription,
     pageCount,
     onDownloadPdf,
+    onDownloadMarkdown,
     onZoomIn,
     onZoomOut,
     zoomLevel,
@@ -215,6 +217,17 @@ const ViewOnlyDocumentHeader = ({
                                     </PoppinsText>
                                 </Column>
                             </AppButton> */}
+
+                            <AppButton variant='green' className='h-10 px-4' onPress={onDownloadMarkdown}>
+                                <Column className='items-center' gap={0}>
+                                    <PoppinsText weight='medium' color='white'>
+                                        {'Download Markdown'}
+                                    </PoppinsText>
+                                    <PoppinsText varient='subtext' className='text-xs text-white/80'>
+                                        All pages in one .md file
+                                    </PoppinsText>
+                                </Column>
+                            </AppButton>
                         </Row>
                     </Row>
                 </Column>

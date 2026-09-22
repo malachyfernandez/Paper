@@ -8,6 +8,7 @@ import { createMarkdownMathSourceDocument } from '../../app/components/ui/markdo
 import ViewOnlyDocumentHeader, { ViewOnlyTab } from '../../app/components/document/ViewOnlyDocumentHeader';
 import ViewOnlyDocumentPage from '../../app/components/document/ViewOnlyDocumentPage';
 import { openViewOnlyPrintWindow } from './openViewOnlyPrintWindow';
+import { downloadViewOnlyMarkdown } from './downloadViewOnlyMarkdown';
 
 interface ViewOnlyDocumentScreenProps {
     documentId: string;
@@ -253,6 +254,18 @@ const ViewOnlyDocumentScreen = ({ documentId }: ViewOnlyDocumentScreenProps) => 
         });
     };
 
+    const handleDownloadMarkdown = () => {
+        if (Platform.OS !== 'web') {
+            return;
+        }
+
+        downloadViewOnlyMarkdown({
+            documentTitle: documentValue?.title || 'Math document',
+            documentDescription: documentValue?.description,
+            pages,
+        });
+    };
+
     if (Platform.OS !== 'web') {
         return (
             <View className='flex-1 items-center justify-center bg-background p-6'>
@@ -317,6 +330,7 @@ const ViewOnlyDocumentScreen = ({ documentId }: ViewOnlyDocumentScreenProps) => 
                 documentDescription={documentValue.description}
                 pageCount={pages.length}
                 onDownloadPdf={handleDownloadPdf}
+                onDownloadMarkdown={handleDownloadMarkdown}
                 onZoomIn={handleZoomIn}
                 onZoomOut={handleZoomOut}
                 zoomLevel={zoomLevel}
