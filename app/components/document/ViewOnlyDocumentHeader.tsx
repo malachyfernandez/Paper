@@ -218,12 +218,12 @@ const ViewOnlyDocumentHeader = ({
                                 </Column>
                             </AppButton> */}
 
-                            <AppButton variant='green' className='h-10 px-4' onPress={onDownloadMarkdown}>
+                            <AppButton variant='green' className='h-11 px-4' onPress={onDownloadMarkdown}>
                                 <Column className='items-center' gap={0}>
-                                    <PoppinsText weight='medium' color='white'>
+                                    <PoppinsText weight='medium' color='white' className='leading-tight'>
                                         {'Download Markdown'}
                                     </PoppinsText>
-                                    <PoppinsText varient='subtext' className='text-xs text-white/80'>
+                                    <PoppinsText varient='subtext' className='text-[10px] leading-tight text-white/80'>
                                         All pages in one .md file
                                     </PoppinsText>
                                 </Column>
