@@ -18,7 +18,7 @@ import DocumentContentPreview from './DocumentContentPreview';
 import FileDropZone from './FileDropZone';
 import ImageColumn from './ImageColumn';
 import NewPageDialog from './NewPageDialog';
-import { uploadWebFiles, UploadThingSignedUpload } from './uploadWebFiles';
+import { uploadWebFiles, UploadProgress, UploadThingSignedUpload } from './uploadWebFiles';
 
 interface DocumentEditorProps {
     documentId: string;
@@ -42,6 +42,7 @@ const DocumentEditor = ({ documentId, userId, activePageId, onSetActivePageId }:
     const generatePublicImageUploadUrl = useAction(api.uploadthing.generatePublicImageUploadUrl);
     const [isProcessingDrop, setIsProcessingDrop] = useState(false);
     const [dropStatus, setDropStatus] = useState('');
+    const [dropProgress, setDropProgress] = useState<UploadProgress | null>(null);
     const [dropError, setDropError] = useState('');
 
     const pages = useUserListGet<MathDocumentPage>({
@@ -125,6 +126,7 @@ const DocumentEditor = ({ documentId, userId, activePageId, onSetActivePageId }:
     const handleDroppedFiles = async (files: File[]) => {
         setDropError('');
         setDropStatus('Uploading files...');
+        setDropProgress(null);
         setIsProcessingDrop(true);
 
         try {
@@ -132,6 +134,7 @@ const DocumentEditor = ({ documentId, userId, activePageId, onSetActivePageId }:
                 files,
                 (args) => generatePublicImageUploadUrl(args) as Promise<UploadThingSignedUpload>,
                 setDropStatus,
+                setDropProgress,
             );
 
             const readyFiles = uploadedFiles.filter((file) => file.uploadedUrl);
@@ -192,6 +195,7 @@ const DocumentEditor = ({ documentId, userId, activePageId, onSetActivePageId }:
         } finally {
             setIsProcessingDrop(false);
             setDropStatus('');
+            setDropProgress(null);
         }
     };
 
@@ -226,6 +230,7 @@ const DocumentEditor = ({ documentId, userId, activePageId, onSetActivePageId }:
                 dropAnywhere
                 isBusy={isProcessingDrop}
                 busyLabel={dropStatus || 'Processing files...'}
+                progress={dropProgress}
                 overlayLabel='Drop an image or PDF to add pages'
                 onFiles={(files) => void handleDroppedFiles(files)}
             >

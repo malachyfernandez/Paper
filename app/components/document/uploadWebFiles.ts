@@ -26,6 +26,12 @@ export type GenerateUploadUrl = (args: {
     lastModified: number;
 }) => Promise<UploadThingSignedUpload>;
 
+export type UploadProgress = {
+    phase: 'rendering' | 'uploading';
+    completed: number;
+    total: number;
+};
+
 const UPLOAD_TIMEOUT_MS = 90000;
 const UPLOAD_CONCURRENCY = 6;
 
@@ -65,7 +71,12 @@ export const uploadFileToPresignedUrl = async (
                 return;
             }
 
-            reject(new Error(xhr.responseText));
+            const responseBody = xhr.response
+                ? typeof xhr.response === 'string'
+                    ? xhr.response
+                    : JSON.stringify(xhr.response)
+                : '';
+            reject(new Error(`Upload failed with status ${xhr.status}${responseBody ? `: ${responseBody}` : ''}`));
         };
         xhr.onerror = () => reject(new Error('Network error'));
         xhr.send(formData);
@@ -139,6 +150,7 @@ export const uploadWebFiles = async (
     files: File[],
     generateUploadUrl: GenerateUploadUrl,
     onStatus?: (message: string) => void,
+    onProgress?: (progress: UploadProgress) => void,
 ): Promise<UploadedWebFile[]> => {
     const supportedFiles = files.filter(isSupportedUploadFile);
 
@@ -151,7 +163,11 @@ export const uploadWebFiles = async (
     for (const file of supportedFiles) {
         if (isPdfFile(file)) {
             onStatus?.('Rendering PDF pages...');
-            const renderedPages = await renderPdfFileToImages(file);
+            const renderedPages = await renderPdfFileToImages(
+                file,
+                (completed, total) => onProgress?.({ phase: 'rendering', completed, total }),
+            );
+            onStatus?.(`Uploading ${renderedPages.length} pages...`);
 
             const uploadedPages = await uploadInBatches(
                 renderedPages,
@@ -165,13 +181,17 @@ export const uploadWebFiles = async (
                         uploadedUrl: publicUrl,
                     };
                 },
-                (completed, total) => onStatus?.(`Uploading pages... ${completed}/${total}`),
+                (completed, total) => {
+                    onStatus?.(`Uploading pages... ${completed}/${total}`);
+                    onProgress?.({ phase: 'uploading', completed, total });
+                },
             );
 
             results.push(...uploadedPages);
         } else {
             onStatus?.('Uploading image...');
             const { publicUrl, preparedFile } = await uploadPreparedFile(file, generateUploadUrl);
+            onProgress?.({ phase: 'uploading', completed: 1, total: 1 });
 
             results.push({
                 id: preparedFile.name,

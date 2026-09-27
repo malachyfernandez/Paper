@@ -9,6 +9,7 @@ interface FileDropZoneProps extends PropsWithChildren {
     dropAnywhere?: boolean;
     isBusy?: boolean;
     busyLabel?: string;
+    progress?: { completed: number; total: number } | null;
     overlayLabel?: string;
     onFiles: (files: File[]) => void;
 }
@@ -25,6 +26,7 @@ const FileDropZone = ({
     dropAnywhere = false,
     isBusy = false,
     busyLabel = 'Processing files...',
+    progress = null,
     overlayLabel = 'Drop files here',
     onFiles,
 }: FileDropZoneProps) => {
@@ -128,6 +130,14 @@ const FileDropZone = ({
                     <PoppinsText weight='medium' className='text-accent mt-2'>
                         {isBusy ? busyLabel : overlayLabel}
                     </PoppinsText>
+                    {isBusy && progress && progress.total > 0 && (
+                        <View className='w-4/5 max-w-56 h-2 rounded-full bg-border/40 mt-3 overflow-hidden'>
+                            <View
+                                className='h-full bg-accent rounded-full'
+                                style={{ width: `${Math.min(100, Math.round((progress.completed / progress.total) * 100))}%` }}
+                            />
+                        </View>
+                    )}
                 </View>
             )}
         </View>

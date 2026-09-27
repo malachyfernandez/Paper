@@ -30,6 +30,7 @@ export type RenderedPdfPage = {
 
 export const renderPdfFileToImages = async (
     file: File,
+    onProgress?: (completed: number, total: number) => void,
 ): Promise<RenderedPdfPage[]> => {
     console.log('🔍 [PDF_DEBUG] renderPdfFileToImages called with file:', file.name);
     
@@ -123,6 +124,8 @@ export const renderPdfFileToImages = async (
                 previewUrl: URL.createObjectURL(blob),
                 file: imageFile,
             });
+
+            onProgress?.(pageNumber, pdfDocument.numPages);
         }
 
         console.log('✅ [PDF_DEBUG] Successfully rendered', pages.length, 'pages');

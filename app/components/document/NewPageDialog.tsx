@@ -11,7 +11,7 @@ import StatusButton from '../ui/StatusButton';
 import SimpleFileUpload from './SimpleFileUpload';
 import FileDropZone from './FileDropZone';
 import FileUrlModal from './FileUrlModal';
-import { uploadWebFiles, UploadThingSignedUpload } from './uploadWebFiles';
+import { uploadWebFiles, UploadProgress, UploadThingSignedUpload } from './uploadWebFiles';
 import { useUserListSet } from 'hooks/useUserListSet';
 import { useUserListRemove } from 'hooks/useUserListRemove';
 import { useUserVariable } from 'hooks/useUserVariable';
@@ -58,6 +58,7 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
     const [createdPages, setCreatedPages] = useState<MathDocumentPage[]>([]);
     const [errorMessage, setErrorMessage] = useState('');
     const [statusMessage, setStatusMessage] = useState('');
+    const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
 
     // Get user-wide AI guidance
     const [aiGuidance] = useUserVariable({
@@ -83,6 +84,7 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
             setDraftPages(newDraftPages);
             setSourceKind(files.length === 1 ? 'image' : 'pdf');
             setStatusMessage('');
+            setUploadProgress(null);
         } catch (error) {
             setErrorMessage(error instanceof Error ? error.message : 'Failed to process files.');
         } finally {
@@ -94,12 +96,14 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
         try {
             setIsProcessingFile(true);
             setStatusMessage('Uploading files...');
+            setUploadProgress(null);
             setErrorMessage('');
 
             const uploadedFiles = await uploadWebFiles(
                 files,
                 (args) => generatePublicImageUploadUrl(args) as Promise<UploadThingSignedUpload>,
                 setStatusMessage,
+                setUploadProgress,
             );
 
             await handleFilesReady(uploadedFiles);
@@ -108,6 +112,7 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
             setStatusMessage('');
         } finally {
             setIsProcessingFile(false);
+            setUploadProgress(null);
         }
     }, [generatePublicImageUploadUrl]);
 
@@ -134,6 +139,7 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
         setTitleInput('Page');
         setErrorMessage('');
         setStatusMessage('');
+        setUploadProgress(null);
     };
 
     // Reset state when dialog opens
@@ -335,6 +341,7 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
                                     <View className='flex-1'>
                                         <SimpleFileUpload
                                             onFilesReady={handleFilesReady}
+                                            onProgress={setUploadProgress}
                                             buttonLabel='Upload File'
                                             className='w-full'
                                         />
@@ -361,8 +368,16 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
                                     className='w-full h-56 rounded-lg border border-subtle-border bg-background overflow-hidden'
                                     enabled={Platform.OS === 'web' && isOpen}
                                     dropAnywhere
-                                    isBusy={isProcessingFile}
-                                    busyLabel={statusMessage || 'Processing files...'}
+                                    isBusy={isProcessingFile || uploadProgress !== null}
+                                    busyLabel={
+                                        statusMessage ||
+                                        (uploadProgress?.phase === 'rendering'
+                                            ? `Rendering PDF pages... ${uploadProgress.completed}/${uploadProgress.total}`
+                                            : uploadProgress?.phase === 'uploading'
+                                                ? `Uploading pages... ${uploadProgress.completed}/${uploadProgress.total}`
+                                                : 'Processing files...')
+                                    }
+                                    progress={uploadProgress}
                                     overlayLabel='Drop files to add pages'
                                     onFiles={(files) => void handleDroppedFiles(files)}
                                 >

@@ -7,6 +7,7 @@ export type RenderedPdfPage = {
 
 export const renderPdfFileToImages = async (
     file: File,
+    onProgress?: (completed: number, total: number) => void,
 ): Promise<RenderedPdfPage[]> => {
     throw new Error('PDF import is currently supported on web only.');
 };

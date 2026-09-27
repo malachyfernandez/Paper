@@ -14,11 +14,13 @@ import {
     uploadWebFiles,
     uploadFileToPresignedUrl,
     withTimeout,
+    UploadProgress,
     UploadThingSignedUpload,
 } from './uploadWebFiles';
 
 interface SimpleFileUploadProps {
     onFilesReady: (files: Array<{ id: string; previewUrl: string; file: File; uploadedUrl?: string }>) => void;
+    onProgress?: (progress: UploadProgress) => void;
     buttonLabel?: string;
     className?: string;
 }
@@ -69,7 +71,7 @@ const pickWebFile = async () => {
     });
 };
 
-const SimpleFileUpload = ({ onFilesReady, buttonLabel = 'Upload File', className = 'h-12 px-5' }: SimpleFileUploadProps) => {
+const SimpleFileUpload = ({ onFilesReady, onProgress, buttonLabel = 'Upload File', className = 'h-12 px-5' }: SimpleFileUploadProps) => {
     const [isUploading, setIsUploading] = useState(false);
     const [isButtonClicked, setIsButtonClicked] = useState(false);
     const [error, setError] = useState('');
@@ -100,6 +102,7 @@ const SimpleFileUpload = ({ onFilesReady, buttonLabel = 'Upload File', className
                     [selectedFile],
                     (args) => generatePublicImageUploadUrl(args) as Promise<UploadThingSignedUpload>,
                     setStatusMessage,
+                    onProgress,
                 );
 
                 console.log('✅ [UPLOAD_DEBUG] Upload finished:', uploadedFiles.length, 'file(s)');
