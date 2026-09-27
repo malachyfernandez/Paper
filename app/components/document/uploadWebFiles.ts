@@ -83,6 +83,25 @@ export const uploadFileToPresignedUrl = async (
     });
 };
 
+const MAX_UPLOAD_ATTEMPTS = 3;
+
+const withRetry = async <T,>(operation: () => Promise<T>, attempts: number = MAX_UPLOAD_ATTEMPTS): Promise<T> => {
+    let lastError: unknown = null;
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+        try {
+            return await operation();
+        } catch (error) {
+            lastError = error;
+            if (attempt < attempts) {
+                await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+            }
+        }
+    }
+
+    throw lastError;
+};
+
 const uploadPreparedFile = async (
     file: File,
     generateUploadUrl: GenerateUploadUrl,
@@ -172,7 +191,7 @@ export const uploadWebFiles = async (
             const uploadedPages = await uploadInBatches(
                 renderedPages,
                 async (page) => {
-                    const { publicUrl } = await uploadPreparedFile(page.file, generateUploadUrl);
+                    const { publicUrl } = await withRetry(() => uploadPreparedFile(page.file, generateUploadUrl));
 
                     return {
                         id: page.id,
@@ -190,7 +209,7 @@ export const uploadWebFiles = async (
             results.push(...uploadedPages);
         } else {
             onStatus?.('Uploading image...');
-            const { publicUrl, preparedFile } = await uploadPreparedFile(file, generateUploadUrl);
+            const { publicUrl, preparedFile } = await withRetry(() => uploadPreparedFile(file, generateUploadUrl));
             onProgress?.({ phase: 'uploading', completed: 1, total: 1 });
 
             results.push({
