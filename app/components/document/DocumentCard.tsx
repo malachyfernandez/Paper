@@ -6,6 +6,7 @@ import PoppinsText from '../ui/text/PoppinsText';
 import { MathDocument } from 'types/mathDocuments';
 import { FileText, Calendar, ChevronRight, StickyNote, Pin, FolderInput, Folder } from 'lucide-react-native';
 import { useUserListLength } from 'hooks/useUserListLength';
+import IconButton from '../ui/buttons/IconButton';
 
 interface DocumentCardProps {
     document: MathDocument;
@@ -68,18 +69,18 @@ const DocumentCard = ({ document, folderName, onPress, onTogglePin, onMoveToFold
 
                 <Row className='items-center gap-1'>
                     {onTogglePin && (
-                        <TouchableOpacity onPress={onTogglePin} hitSlop={8} className='p-1.5'>
+                        <IconButton onPress={onTogglePin} tooltip={isPinned ? 'Unpin document' : 'Pin to top'}>
                             <Pin
                                 size={16}
                                 className={isPinned ? 'text-accent' : 'text-subtext'}
                                 fill={isPinned ? 'currentColor' : 'none'}
                             />
-                        </TouchableOpacity>
+                        </IconButton>
                     )}
                     {onMoveToFolder && (
-                        <TouchableOpacity onPress={onMoveToFolder} hitSlop={8} className='p-1.5'>
+                        <IconButton onPress={onMoveToFolder} tooltip='Move to folder'>
                             <FolderInput size={16} className="text-subtext" />
-                        </TouchableOpacity>
+                        </IconButton>
                     )}
                     <ChevronRight size={20} className="text-subtext" />
                 </Row>

@@ -4,6 +4,7 @@ import Row from '../layout/Row';
 import PoppinsText from '../ui/text/PoppinsText';
 import { MathDocumentFolder } from 'types/mathDocuments';
 import { ChevronRight, Folder, Pencil } from 'lucide-react-native';
+import IconButton from '../ui/buttons/IconButton';
 
 interface FolderCardProps {
     folder: MathDocumentFolder;
@@ -31,9 +32,9 @@ const FolderCard = ({ folder, documentCount, onPress, onEdit }: FolderCardProps)
                 </Row>
 
                 <Row className='items-center gap-1'>
-                    <TouchableOpacity onPress={onEdit} hitSlop={8} className='p-1.5'>
+                    <IconButton onPress={onEdit} tooltip='Edit folder'>
                         <Pencil size={16} className="text-subtext" />
-                    </TouchableOpacity>
+                    </IconButton>
                     <ChevronRight size={20} className="text-subtext" />
                 </Row>
             </Row>

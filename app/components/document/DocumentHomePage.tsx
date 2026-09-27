@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, TouchableOpacity, View } from 'react-native';
-import { ScrollShadow } from 'heroui-native';
+import { ScrollShadow, SearchField } from 'heroui-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Column from '../layout/Column';
 import Row from '../layout/Row';
 import PoppinsText from '../ui/text/PoppinsText';
-import { SearchField } from 'heroui-native';
 import { useUserListSet } from 'hooks/useUserListSet';
 import { useUserListGet } from 'hooks/useUserListGet';
 import { useUserListRemove } from 'hooks/useUserListRemove';
@@ -18,6 +17,7 @@ import NewFolderDialog from './NewFolderDialog';
 import EditFolderDialog from './EditFolderDialog';
 import MoveToFolderDialog from './MoveToFolderDialog';
 import { ArrowLeft, FileText, Folder, Pencil } from 'lucide-react-native';
+import IconButton from '../ui/buttons/IconButton';
 import LoadingState from '../ui/loading/LoadingState';
 
 interface DocumentHomePageProps {
@@ -198,7 +198,7 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                         {/* Breadcrumb when inside a folder */}
                         {!isSearching && activeFolder && (
                             <Row className='items-center gap-2 px-1'>
-                                <TouchableOpacity onPress={() => setActiveFolderId(null)} hitSlop={8}>
+                                <TouchableOpacity onPress={() => setActiveFolderId(null)} hitSlop={8} className='rounded-lg px-2 py-1 -ml-2 hover:bg-border'>
                                     <Row className='items-center gap-1'>
                                         <ArrowLeft size={16} className='text-accent' />
                                         <PoppinsText weight='medium' className='text-accent'>All documents</PoppinsText>
@@ -207,9 +207,9 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                                 <PoppinsText varient='subtext'>/</PoppinsText>
                                 <Folder size={16} className='text-accent' />
                                 <PoppinsText weight='bold' className='flex-1'>{activeFolder.name}</PoppinsText>
-                                <TouchableOpacity onPress={() => setEditingFolder(activeFolder)} hitSlop={8} className='p-1'>
+                                <IconButton onPress={() => setEditingFolder(activeFolder)} tooltip='Edit folder'>
                                     <Pencil size={16} className='text-subtext' />
-                                </TouchableOpacity>
+                                </IconButton>
                             </Row>
                         )}
 
