@@ -13,9 +13,10 @@ import { generateId } from 'utils/generateId';
 interface NewDocumentDialogProps {
     onCreate: (documentId: string) => void;
     buttonVariant?: 'black' | 'green';
+    folderId?: string | null;
 }
 
-const NewDocumentDialog = ({ onCreate, buttonVariant = 'black' }: NewDocumentDialogProps) => {
+const NewDocumentDialog = ({ onCreate, buttonVariant = 'black', folderId = null }: NewDocumentDialogProps) => {
     const setDocument = useUserListSet<MathDocument>();
     const [isOpen, setIsOpen] = useState(false);
     const [title, setTitle] = useState('');
@@ -34,6 +35,7 @@ const NewDocumentDialog = ({ onCreate, buttonVariant = 'black' }: NewDocumentDia
                 description: description.trim(),
                 createdAt: now,
                 lastOpenedAt: now,
+                folderId,
             },
             privacy: 'PUBLIC',
             searchKeys: ['title', 'description'],

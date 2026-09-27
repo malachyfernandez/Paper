@@ -10,6 +10,14 @@ export interface MathDocument {
     description: string;
     createdAt: number;
     lastOpenedAt: number;
+    folderId?: string | null;
+    pinnedAt?: number;
+}
+
+export interface MathDocumentFolder {
+    id: string;
+    name: string;
+    createdAt: number;
 }
 
 export interface MathDocumentPageFollowUp {

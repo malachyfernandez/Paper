@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Image, ActivityIndicator, View, ScrollView, Platform, Pressable } from 'react-native';
 import Column from '../layout/Column';
 import Row from '../layout/Row';
@@ -9,6 +9,7 @@ import ConvexDialog from '../ui/dialog/ConvexDialog';
 import DialogHeader from '../ui/dialog/DialogHeader';
 import StatusButton from '../ui/StatusButton';
 import SimpleFileUpload from './SimpleFileUpload';
+import FileDropZone from './FileDropZone';
 import FileUrlModal from './FileUrlModal';
 import { uploadWebFiles, UploadThingSignedUpload } from './uploadWebFiles';
 import { useUserListSet } from 'hooks/useUserListSet';
@@ -57,8 +58,6 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
     const [createdPages, setCreatedPages] = useState<MathDocumentPage[]>([]);
     const [errorMessage, setErrorMessage] = useState('');
     const [statusMessage, setStatusMessage] = useState('');
-    const [isDragActive, setIsDragActive] = useState(false);
-    const dropZoneRef = useRef<any>(null);
 
     // Get user-wide AI guidance
     const [aiGuidance] = useUserVariable({
@@ -111,56 +110,6 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
             setIsProcessingFile(false);
         }
     }, [generatePublicImageUploadUrl]);
-
-    // Attach drag & drop listeners to the dialog body (web only)
-    useEffect(() => {
-        if (Platform.OS !== 'web' || !isOpen) {
-            return;
-        }
-
-        const node = dropZoneRef.current as HTMLElement | null;
-        if (!node || typeof node.addEventListener !== 'function') {
-            return;
-        }
-
-        const handleDragOver = (event: DragEvent) => {
-            event.preventDefault();
-            if (event.dataTransfer) {
-                event.dataTransfer.dropEffect = 'copy';
-            }
-            setIsDragActive(true);
-        };
-
-        const handleDragLeave = (event: DragEvent) => {
-            event.preventDefault();
-            if (event.relatedTarget && node.contains(event.relatedTarget as Node)) {
-                return;
-            }
-            setIsDragActive(false);
-        };
-
-        const handleDrop = (event: DragEvent) => {
-            event.preventDefault();
-            setIsDragActive(false);
-
-            const files = Array.from(event.dataTransfer?.files ?? []);
-            if (files.length) {
-                void handleDroppedFiles(files);
-            }
-        };
-
-        node.addEventListener('dragover', handleDragOver);
-        node.addEventListener('dragenter', handleDragOver);
-        node.addEventListener('dragleave', handleDragLeave);
-        node.addEventListener('drop', handleDrop);
-
-        return () => {
-            node.removeEventListener('dragover', handleDragOver);
-            node.removeEventListener('dragenter', handleDragOver);
-            node.removeEventListener('dragleave', handleDragLeave);
-            node.removeEventListener('drop', handleDrop);
-        };
-    }, [isOpen, handleDroppedFiles]);
 
     const revokePreviewUrl = (url: string) => {
         if (url.startsWith('blob:')) {
@@ -365,7 +314,7 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
                     <ConvexDialog.Close iconProps={{ color: 'rgb(246, 238, 219)' }} className='w-10 h-10 bg-accent-hover absolute right-4 top-4 z-10' />
                     <Column>
                         <DialogHeader text='Add Pages' subtext='Create one or more pages for your document.' />
-                        <Column ref={dropZoneRef} className='pt-5' gap={4}>
+                        <Column className='pt-5' gap={4}>
 
                             <Column gap={1}>
                                 <PoppinsText weight='medium'>
@@ -408,7 +357,15 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
                             <Column gap={1}>
                                 <PoppinsText weight='medium'>Preview</PoppinsText>
                                 
-                                <View className={`w-full h-56 rounded-lg border bg-background overflow-hidden relative ${isDragActive ? 'border-2 border-dashed border-blue-500' : 'border-subtle-border'}`}>
+                                <FileDropZone
+                                    className='w-full h-56 rounded-lg border border-subtle-border bg-background overflow-hidden'
+                                    enabled={Platform.OS === 'web' && isOpen}
+                                    dropAnywhere
+                                    isBusy={isProcessingFile}
+                                    busyLabel={statusMessage || 'Processing files...'}
+                                    overlayLabel='Drop files to add pages'
+                                    onFiles={(files) => void handleDroppedFiles(files)}
+                                >
                                     {draftPages.length === 1 ? (
                                         <View className='flex-1 items-center justify-center p-3'>
                                             <Image
@@ -460,14 +417,7 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
                                         </View>
                                     )}
 
-                                    {isDragActive && (
-                                        <View className='absolute inset-0 items-center justify-center bg-blue-500/10' pointerEvents='none'>
-                                            <PoppinsText weight='medium' className='text-blue-500'>
-                                                Drop files to add pages
-                                            </PoppinsText>
-                                        </View>
-                                    )}
-                                </View>
+                                </FileDropZone>
                             </Column>
 
                             {statusMessage && (

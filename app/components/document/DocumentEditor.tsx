@@ -1,18 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
+import { useAction } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import Column from '../layout/Column';
 import Row from '../layout/Row';
 import PoppinsText from '../ui/text/PoppinsText';
 import { useUserList } from 'hooks/useUserList';
 import { useUserListGet } from 'hooks/useUserListGet';
 import { useUserListSet } from 'hooks/useUserListSet';
+import { useUserListRemove } from 'hooks/useUserListRemove';
 import { useUndoRedo, useCreateUndoSnapshot } from 'hooks/useUndoRedo';
 import { useGeneration } from '../../../contexts/GenerationContext';
 import { MathDocument, MathDocumentPage } from 'types/mathDocuments';
+import { generateId } from 'utils/generateId';
 import DocumentContent from './DocumentContent';
 import DocumentContentPreview from './DocumentContentPreview';
+import FileDropZone from './FileDropZone';
 import ImageColumn from './ImageColumn';
 import NewPageDialog from './NewPageDialog';
+import { uploadWebFiles, UploadThingSignedUpload } from './uploadWebFiles';
 
 interface DocumentEditorProps {
     documentId: string;
@@ -32,6 +38,11 @@ const DocumentEditor = ({ documentId, userId, activePageId, onSetActivePageId }:
         itemId: documentId,
     });
     const setPage = useUserListSet<MathDocumentPage>();
+    const removePage = useUserListRemove();
+    const generatePublicImageUploadUrl = useAction(api.uploadthing.generatePublicImageUploadUrl);
+    const [isProcessingDrop, setIsProcessingDrop] = useState(false);
+    const [dropStatus, setDropStatus] = useState('');
+    const [dropError, setDropError] = useState('');
 
     const pages = useUserListGet<MathDocumentPage>({
         key: 'mathDocumentPages',
@@ -111,6 +122,79 @@ const DocumentEditor = ({ documentId, userId, activePageId, onSetActivePageId }:
 
     const [previewMarkdown, setPreviewMarkdown] = useState("");
 
+    const handleDroppedFiles = async (files: File[]) => {
+        setDropError('');
+        setDropStatus('Uploading files...');
+        setIsProcessingDrop(true);
+
+        try {
+            const uploadedFiles = await uploadWebFiles(
+                files,
+                (args) => generatePublicImageUploadUrl(args) as Promise<UploadThingSignedUpload>,
+                setDropStatus,
+            );
+
+            const readyFiles = uploadedFiles.filter((file) => file.uploadedUrl);
+            if (!readyFiles.length) {
+                throw new Error('No files were uploaded.');
+            }
+
+            // A single image dropped on an empty page fills that page's image
+            if (readyFiles.length === 1 && activePage && !activePage.imageUrl) {
+                replacePageWithUndo({ ...activePage, imageUrl: readyFiles[0].uploadedUrl! }, 'Updated page image');
+                return;
+            }
+
+            const nextPageNumber = pages.reduce((max, page) => Math.max(max, page.value.pageNumber), 0) + 1;
+            const pagesToCreate: MathDocumentPage[] = readyFiles.map((file, index) => ({
+                id: generateId(),
+                documentId,
+                pageNumber: nextPageNumber + index,
+                title: 'Page',
+                imageUrl: file.uploadedUrl!,
+                markdown: 'BLANK PAGE',
+                lastAiPrompt: '',
+                followUps: [],
+            }));
+
+            executeCommand({
+                action: async () => {
+                    await Promise.all(
+                        pagesToCreate.map((page) =>
+                            setPage({
+                                key: 'mathDocumentPages',
+                                itemId: page.id,
+                                value: page,
+                                privacy: 'PUBLIC',
+                                filterKey: 'documentId',
+                                searchKeys: ['title', 'markdown'],
+                                sortKey: 'pageNumber',
+                            }),
+                        ),
+                    );
+                },
+                undoAction: async () => {
+                    await Promise.all(
+                        pagesToCreate.map((page) =>
+                            removePage({
+                                key: 'mathDocumentPages',
+                                itemId: page.id,
+                            }),
+                        ),
+                    );
+                },
+                description: `Added ${pagesToCreate.length} page(s) via drag & drop`,
+            });
+
+            onSetActivePageId(pagesToCreate[0].id);
+        } catch (error) {
+            setDropError(error instanceof Error ? error.message : 'Failed to upload dropped files.');
+        } finally {
+            setIsProcessingDrop(false);
+            setDropStatus('');
+        }
+    };
+
     if (!documentRecord.value) {
         return (
             <Column className='flex-1 rounded-2xl border-2 border-border bg-inner-background p-6' gap={2}>
@@ -136,7 +220,15 @@ const DocumentEditor = ({ documentId, userId, activePageId, onSetActivePageId }:
 
     return (
         <View className='flex-1 flex-col sm:flex-row gap-4'>
-            <View className='sm:flex-1'>
+            <FileDropZone
+                className='sm:flex-1'
+                enabled={Platform.OS === 'web'}
+                dropAnywhere
+                isBusy={isProcessingDrop}
+                busyLabel={dropStatus || 'Processing files...'}
+                overlayLabel='Drop an image or PDF to add pages'
+                onFiles={(files) => void handleDroppedFiles(files)}
+            >
                 <View className='h-48 sm:h-full border-b border-subtle-border sm:border-0 -mb-4'>
                     <ImageColumn
                         page={activePage}
@@ -147,7 +239,14 @@ const DocumentEditor = ({ documentId, userId, activePageId, onSetActivePageId }:
                         }}
                     />
                 </View>
-            </View>
+                {dropError ? (
+                    <View className='absolute bottom-2 left-0 right-0 items-center' pointerEvents='none'>
+                        <PoppinsText className='text-red-500 text-sm bg-background px-3 py-1 rounded'>
+                            {dropError}
+                        </PoppinsText>
+                    </View>
+                ) : null}
+            </FileDropZone>
 
             {activePage?.imageUrl && (
                 <View className='flex-1 min-w-min sm:min-w-[400px] shrink-0 px-4 sm:pl-0'>

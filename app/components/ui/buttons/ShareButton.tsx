@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import { MathDocumentPage } from 'types/mathDocuments';
+import { MathDocument, MathDocumentPage } from 'types/mathDocuments';
 import { useToast } from '../../../../contexts/ToastContext';
+import { useUserList } from 'hooks/useUserList';
 import { useUserListSet } from 'hooks/useUserListSet';
 import { buildViewOnlyDocumentUrl } from '../../../../utils/buildViewOnlyDocumentUrl';
 import AppButton from './AppButton';
@@ -18,6 +19,10 @@ const ShareButton = ({ documentTitle, documentId, activePage, className }: Share
     const { showToast } = useToast();
     const setDocument = useUserListSet();
     const setPage = useUserListSet<MathDocumentPage>();
+    const [documentRecord] = useUserList<MathDocument>({
+        key: 'mathDocuments',
+        itemId: documentId,
+    });
 
     const [isSharing, setIsSharing] = useState(false);
     const [shareTrigger, setShareTrigger] = useState(false);
@@ -50,10 +55,11 @@ const ShareButton = ({ documentTitle, documentId, activePage, className }: Share
                     key: 'mathDocuments',
                     itemId: documentId,
                     value: {
+                        ...documentRecord.value,
                         id: documentId,
-                        title: documentTitle,
-                        description: '', // We don't have description here, but it's okay
-                        createdAt: Date.now(), // This should be preserved but we don't have it
+                        title: documentRecord.value?.title ?? documentTitle,
+                        description: documentRecord.value?.description ?? '',
+                        createdAt: documentRecord.value?.createdAt ?? Date.now(),
                         lastOpenedAt: Date.now(),
                     },
                     privacy: 'PUBLIC',
@@ -94,7 +100,7 @@ const ShareButton = ({ documentTitle, documentId, activePage, className }: Share
         };
 
         void executeShare();
-    }, [shareTrigger, documentId, documentTitle, activePage, setDocument, setPage, showToast]);
+    }, [shareTrigger, documentId, documentTitle, activePage, documentRecord, setDocument, setPage, showToast]);
 
     const triggerShareLink = () => {
         setShareTrigger(true);

@@ -2,7 +2,7 @@ import { generateId } from './generateId';
 
 const TARGET_MIN_DIMENSION = 1080;
 const JPEG_QUALITY = 0.82;
-const MAX_PAGES = 20;
+const MAX_PAGES = 150;
 
 const canvasToJpegBlob = async (canvas: HTMLCanvasElement) => {
     return await new Promise<Blob>((resolve, reject) => {
