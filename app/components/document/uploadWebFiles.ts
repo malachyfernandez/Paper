@@ -27,6 +27,7 @@ export type GenerateUploadUrl = (args: {
 }) => Promise<UploadThingSignedUpload>;
 
 const UPLOAD_TIMEOUT_MS = 90000;
+const UPLOAD_CONCURRENCY = 6;
 
 export const withTimeout = async <T,>(promise: Promise<T>, message: string, timeoutMs: number = UPLOAD_TIMEOUT_MS) => {
     return await Promise.race([
@@ -108,6 +109,32 @@ export const isSupportedUploadFile = (file: File) => {
     return isPdfFile(file) || file.type.startsWith('image/');
 };
 
+const uploadInBatches = async <T, R>(
+    items: T[],
+    uploadOne: (item: T) => Promise<R>,
+    onProgress?: (completed: number, total: number) => void,
+): Promise<R[]> => {
+    const results: R[] = new Array(items.length);
+    let nextIndex = 0;
+    let completed = 0;
+
+    const workers = Array.from(
+        { length: Math.min(UPLOAD_CONCURRENCY, items.length) },
+        async () => {
+            while (nextIndex < items.length) {
+                const index = nextIndex;
+                nextIndex += 1;
+                results[index] = await uploadOne(items[index]);
+                completed += 1;
+                onProgress?.(completed, items.length);
+            }
+        },
+    );
+
+    await Promise.all(workers);
+    return results;
+};
+
 export const uploadWebFiles = async (
     files: File[],
     generateUploadUrl: GenerateUploadUrl,
@@ -125,10 +152,10 @@ export const uploadWebFiles = async (
         if (isPdfFile(file)) {
             onStatus?.('Rendering PDF pages...');
             const renderedPages = await renderPdfFileToImages(file);
-            onStatus?.(`Uploading ${renderedPages.length} pages...`);
 
-            const uploadedPages = await Promise.all(
-                renderedPages.map(async (page) => {
+            const uploadedPages = await uploadInBatches(
+                renderedPages,
+                async (page) => {
                     const { publicUrl } = await uploadPreparedFile(page.file, generateUploadUrl);
 
                     return {
@@ -137,7 +164,8 @@ export const uploadWebFiles = async (
                         file: page.file,
                         uploadedUrl: publicUrl,
                     };
-                }),
+                },
+                (completed, total) => onStatus?.(`Uploading pages... ${completed}/${total}`),
             );
 
             results.push(...uploadedPages);
