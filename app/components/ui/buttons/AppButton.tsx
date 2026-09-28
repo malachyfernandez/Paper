@@ -88,7 +88,7 @@ const AppButton = ({
         
     } else if (variant === 'outline') {
         const bg = 'bg-none';
-        extraStyles = `border-2 border-border ${bg} group hover:bg-border`;
+        extraStyles = `border-2 border-border ${bg} group hover:bg-border/10`;
         
     } else if (variant === 'grey') {
         const bg = 'bg-[#374559ae]';
