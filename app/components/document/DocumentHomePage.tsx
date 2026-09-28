@@ -198,7 +198,7 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                         {/* Breadcrumb when inside a folder */}
                         {!isSearching && activeFolder && (
                             <Row className='items-center gap-2 px-1'>
-                                <TouchableOpacity onPress={() => setActiveFolderId(null)} hitSlop={8} className='rounded-lg px-2 py-1 -ml-2 hover:bg-border'>
+                                <TouchableOpacity onPress={() => setActiveFolderId(null)} hitSlop={8} className='rounded-lg px-2 py-1 -ml-2 hover:bg-border/10'>
                                     <Row className='items-center gap-1'>
                                         <ArrowLeft size={16} className='text-accent' />
                                         <PoppinsText weight='medium' className='text-accent'>All documents</PoppinsText>

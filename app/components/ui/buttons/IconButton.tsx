@@ -13,7 +13,7 @@ const IconButton = ({ children, onPress, tooltip, className = '' }: IconButtonPr
         <TouchableOpacity
             onPress={onPress}
             hitSlop={8}
-            className={`p-1.5 rounded-lg border border-transparent hover:bg-border hover:border-subtle-border active:brightness-75 ${className}`}
+            className={`p-1.5 rounded-lg border border-transparent hover:bg-border/10 hover:border-subtle-border active:brightness-75 ${className}`}
         >
             {children}
         </TouchableOpacity>
