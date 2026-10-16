@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, TouchableOpacity, View } from 'react-native';
+import { Pressable, ScrollView, TouchableOpacity, View } from 'react-native';
 import { ScrollShadow, SearchField } from 'heroui-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Column from '../layout/Column';
@@ -11,16 +11,17 @@ import { useUserListRemove } from 'hooks/useUserListRemove';
 import { useUserVariable } from 'hooks/useUserVariable';
 import { useListSearch } from 'hooks/useListSearch';
 import { MathDocument, MathDocumentFolder } from 'types/mathDocuments';
-import { DEFAULT_DOCUMENT_SORT, DOCUMENT_SORT_VARIABLE_KEY, DocumentSortOption, sortDocuments, sortFolders } from 'utils/documentSort';
+import { DEFAULT_DOCUMENT_SORT, DEFAULT_DOCUMENT_VIEW_MODE, DOCUMENT_SORT_VARIABLE_KEY, DOCUMENT_VIEW_MODE_VARIABLE_KEY, DocumentSortOption, DocumentViewMode, sortDocuments, sortFolders } from 'utils/documentSort';
 import { getFolderAncestorChain } from 'utils/folderTree';
 import DocumentCard from './DocumentCard';
+import DocumentColumnBrowser from './DocumentColumnBrowser';
 import DocumentSortButton from './DocumentSortButton';
 import FolderCard from './FolderCard';
 import NewDocumentDialog from './NewDocumentDialog';
 import NewFolderDialog from './NewFolderDialog';
 import EditFolderDialog from './EditFolderDialog';
 import MoveToFolderDialog from './MoveToFolderDialog';
-import { ArrowLeft, FileText, Folder, Pencil } from 'lucide-react-native';
+import { ArrowLeft, Columns3, FileText, Folder, List, Pencil } from 'lucide-react-native';
 import IconButton from '../ui/buttons/IconButton';
 import LoadingState from '../ui/loading/LoadingState';
 
@@ -43,6 +44,15 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
         defaultValue: DEFAULT_DOCUMENT_SORT,
     });
     const sortOption = sortRecord.value;
+    const [viewModeRecord, setViewMode] = useUserVariable<DocumentViewMode>({
+        key: DOCUMENT_VIEW_MODE_VARIABLE_KEY,
+        defaultValue: DEFAULT_DOCUMENT_VIEW_MODE,
+    });
+    const viewMode: DocumentViewMode = viewModeRecord.value === 'columns' ? 'columns' : 'list';
+    /** Deepest column open in the Finder-style browser (drives create-button targets). */
+    const [columnsFolderId, setColumnsFolderId] = useState<string | null>(null);
+    /** List view: folders expanded in place via their disclosure triangle. */
+    const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
 
     // Use the new generic search hook
     const { items: documents, isLoading, hasResults, resultCount } = useListSearch<MathDocument>({
@@ -71,6 +81,33 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
         () => folders.filter((folder) => (folder.parentId ?? null) === activeFolderId),
         [folders, activeFolderId],
     );
+
+    // Direct children maps for list-view expansion (folders are already sorted)
+    const foldersByParentId = useMemo(() => {
+        const map = new Map<string, MathDocumentFolder[]>();
+        for (const folder of folders) {
+            const parentId = folder.parentId ?? null;
+            if (!parentId) continue;
+            const siblings = map.get(parentId) ?? [];
+            siblings.push(folder);
+            map.set(parentId, siblings);
+        }
+        return map;
+    }, [folders]);
+
+    const documentsByFolderId = useMemo(() => {
+        const map = new Map<string, MathDocument[]>();
+        for (const document of documents ?? []) {
+            if (!document.folderId) continue;
+            const siblings = map.get(document.folderId) ?? [];
+            siblings.push(document);
+            map.set(document.folderId, siblings);
+        }
+        for (const [folderId, siblings] of map) {
+            map.set(folderId, sortDocuments(siblings, sortOption));
+        }
+        return map;
+    }, [documents, sortOption]);
 
     // Ancestor chain from the root down to the active folder (for the breadcrumb)
     const ancestorChain = useMemo(
@@ -182,6 +219,26 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
         });
     };
 
+    const toggleFolderExpanded = (folderId: string) => {
+        setExpandedFolderIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(folderId)) {
+                next.delete(folderId);
+            } else {
+                next.add(folderId);
+            }
+            return next;
+        });
+    };
+
+    const handleViewModeChange = (mode: DocumentViewMode) => {
+        // Carry the deepest navigated folder back into list view when leaving columns.
+        if (mode === 'list') {
+            setActiveFolderId(columnsFolderId);
+        }
+        setViewMode(mode);
+    };
+
     const deleteFolder = async (folder: MathDocumentFolder) => {
         // Unfile the folder's documents instead of deleting them
         const folderDocuments = (documents ?? []).filter((document) => document.folderId === folder.id);
@@ -236,6 +293,48 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
 
     const showFolderBrowser = !isSearching && visibleFolders.length > 0;
     const showEmptyState = visibleDocuments.length === 0 && (isSearching || !showFolderBrowser);
+    const showColumns = viewMode === 'columns' && !isSearching;
+    // In columns mode, create/paste actions target the deepest open column.
+    const createTargetFolderId = showColumns ? columnsFolderId : activeFolderId;
+
+    /** Recursive list-view rendering: a folder card plus, when expanded via its
+     *  disclosure triangle, its subfolders and documents indented underneath. */
+    const renderFolderItem = (folder: MathDocumentFolder, depth: number): React.ReactNode => {
+        const isExpanded = expandedFolderIds.has(folder.id);
+        const hasChildren =
+            (foldersByParentId.get(folder.id)?.length ?? 0) + (documentsByFolderId.get(folder.id)?.length ?? 0) > 0;
+
+        return (
+            <React.Fragment key={folder.id}>
+                <View style={{ marginLeft: depth * 20 }}>
+                    <FolderCard
+                        folder={folder}
+                        documentCount={folderDocumentCounts[folder.id] ?? 0}
+                        folderCount={subfolderCounts[folder.id] ?? 0}
+                        expanded={isExpanded}
+                        onToggleExpand={hasChildren ? () => toggleFolderExpanded(folder.id) : undefined}
+                        onPress={() => setActiveFolderId(folder.id)}
+                        onEdit={() => setEditingFolder(folder)}
+                    />
+                </View>
+                {isExpanded && (
+                    <Column gap={3} className='pt-3'>
+                        {(foldersByParentId.get(folder.id) ?? []).map((child) => renderFolderItem(child, depth + 1))}
+                        {(documentsByFolderId.get(folder.id) ?? []).map((document) => (
+                            <View key={document.id} style={{ marginLeft: (depth + 1) * 20 }}>
+                                <DocumentCard
+                                    document={document}
+                                    onPress={() => void openDocument(document)}
+                                    onTogglePin={() => togglePin(document)}
+                                    onMoveToFolder={() => setMovingDocument(document)}
+                                />
+                            </View>
+                        ))}
+                    </Column>
+                )}
+            </React.Fragment>
+        );
+    };
 
     return (
         <Column className='flex-1' gap={6}>
@@ -256,15 +355,47 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                 {/* Create Buttons */}
                 <Row gap={2} className='items-center'>
                     <View className='flex-1'>
-                        <NewDocumentDialog onCreate={setActiveDocumentId} buttonVariant='green' folderId={activeFolderId} />
+                        <NewDocumentDialog onCreate={setActiveDocumentId} buttonVariant='green' folderId={createTargetFolderId} />
                     </View>
-                    <NewFolderDialog parentFolderId={activeFolderId} />
+                    <NewFolderDialog parentFolderId={createTargetFolderId} />
                     <DocumentSortButton />
+                    {/* View toggle - macOS segmented control (list / columns) */}
+                    <Row className='overflow-hidden rounded-lg border border-border h-12' gap={0}>
+                        <Pressable
+                            accessibilityLabel='List view'
+                            onPress={() => handleViewModeChange('list')}
+                            className={`h-full w-11 items-center justify-center ${viewMode === 'list' ? 'bg-text/15' : 'hover:bg-text/5'}`}
+                        >
+                            <List size={16} className='text-text' />
+                        </Pressable>
+                        <Pressable
+                            accessibilityLabel='Column view'
+                            onPress={() => handleViewModeChange('columns')}
+                            className={`h-full w-11 items-center justify-center border-l border-border ${viewMode === 'columns' ? 'bg-text/15' : 'hover:bg-text/5'}`}
+                        >
+                            <Columns3 size={16} className='text-text' />
+                        </Pressable>
+                    </Row>
                 </Row>
             </Column>
 
             {/* Documents List */}
             <ScrollShadow LinearGradientComponent={LinearGradient} className='flex-1'>
+                {showColumns ? (
+                    <DocumentColumnBrowser
+                        userId={userId}
+                        folders={folders}
+                        documents={documents ?? []}
+                        sortOption={sortOption}
+                        initialFolderId={activeFolderId}
+                        onActiveFolderChange={setColumnsFolderId}
+                        onOpenDocument={(document) => void openDocument(document)}
+                        onEditFolder={setEditingFolder}
+                        onMoveDocument={setMovingDocument}
+                        onTogglePin={togglePin}
+                        keyboardEnabled={!editingFolder && !movingDocument}
+                    />
+                ) : (
                 <ScrollView className='flex-1' showsVerticalScrollIndicator={false}>
                     <Column gap={4} className='pb-8 max-w-[800px] w-full mx-auto px-4'>
                         {/* Breadcrumb when inside a folder */}
@@ -314,20 +445,11 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                             </PoppinsText>
                         )}
 
-                        {/* Folders in the current view */}
+                        {/* Folders in the current view (expandable via disclosure triangles) */}
                         {showFolderBrowser && (
                             <Column gap={3}>
                                 <PoppinsText varient='cardHeader' className='px-2'>{activeFolder ? 'Subfolders' : 'Folders'}</PoppinsText>
-                                {visibleFolders.map((folder) => (
-                                    <FolderCard
-                                        key={folder.id}
-                                        folder={folder}
-                                        documentCount={folderDocumentCounts[folder.id] ?? 0}
-                                        folderCount={subfolderCounts[folder.id] ?? 0}
-                                        onPress={() => setActiveFolderId(folder.id)}
-                                        onEdit={() => setEditingFolder(folder)}
-                                    />
-                                ))}
+                                {visibleFolders.map((folder) => renderFolderItem(folder, 0))}
                             </Column>
                         )}
 
@@ -390,6 +512,7 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                         ) : null}
                     </Column>
                 </ScrollView>
+                )}
             </ScrollShadow>
 
             <EditFolderDialog

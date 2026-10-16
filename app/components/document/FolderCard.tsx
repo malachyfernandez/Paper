@@ -1,20 +1,23 @@
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
+import { Pressable, TouchableOpacity } from 'react-native';
 import Row from '../layout/Row';
 import PoppinsText from '../ui/text/PoppinsText';
 import { MathDocumentFolder } from 'types/mathDocuments';
-import { ChevronRight, Folder, Pencil } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, Folder, Pencil } from 'lucide-react-native';
 import IconButton from '../ui/buttons/IconButton';
 
 interface FolderCardProps {
     folder: MathDocumentFolder;
     documentCount: number;
     folderCount?: number;
+    /** When provided, renders a disclosure triangle that expands the folder in place. */
+    expanded?: boolean;
+    onToggleExpand?: () => void;
     onPress: () => void;
     onEdit: () => void;
 }
 
-const FolderCard = ({ folder, documentCount, folderCount = 0, onPress, onEdit }: FolderCardProps) => {
+const FolderCard = ({ folder, documentCount, folderCount = 0, expanded = false, onToggleExpand, onPress, onEdit }: FolderCardProps) => {
     return (
         <TouchableOpacity
             onPress={onPress}
@@ -23,8 +26,24 @@ const FolderCard = ({ folder, documentCount, folderCount = 0, onPress, onEdit }:
         >
             <Row className='items-center justify-between'>
                 <Row className='items-center gap-2 flex-1'>
+                    {onToggleExpand && (
+                        <Pressable
+                            accessibilityLabel={expanded ? 'Collapse folder' : 'Expand folder'}
+                            onPress={(e) => {
+                                e.stopPropagation?.();
+                                onToggleExpand();
+                            }}
+                            className='-ml-1 h-6 w-6 items-center justify-center rounded-md hover:bg-text/10'
+                        >
+                            {expanded ? (
+                                <ChevronDown size={14} className='text-text' />
+                            ) : (
+                                <ChevronRight size={14} className='text-text' />
+                            )}
+                        </Pressable>
+                    )}
                     <Folder size={18} className="text-accent" />
-                    <PoppinsText weight='bold' className='text-xl flex-1'>
+                    <PoppinsText weight='bold' className='text-xl flex-1' numberOfLines={1}>
                         {folder.name}
                     </PoppinsText>
                     <PoppinsText varient='subtext'>

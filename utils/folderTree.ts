@@ -81,6 +81,19 @@ export const getFolderAncestorChain = (
 };
 
 /**
+ * Finder-style copy naming: "Name copy", then "Name copy 2", "Name copy 3", ...
+ * `taken` is a set of already-used names (lowercased) in the destination.
+ */
+export const makeCopyName = (base: string, taken: Set<string>) => {
+    const copyBase = `${base} copy`;
+    let name = copyBase;
+    for (let index = 2; taken.has(name.toLowerCase()); index += 1) {
+        name = `${copyBase} ${index}`;
+    }
+    return name;
+};
+
+/**
  * Returns the id of the given folder plus the ids of all of its descendants.
  * Used to prevent moving a folder into itself or one of its children.
  */

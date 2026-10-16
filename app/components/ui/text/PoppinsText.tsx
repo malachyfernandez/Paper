@@ -12,6 +12,7 @@ interface PoppinsTextProps extends PropsWithChildren {
     varient?: PoppinsTextVarient;
     color?: TextColor;
     style?: TextStyle;
+    numberOfLines?: number;
     onLayout?: (event: LayoutChangeEvent) => void;
 }
 
@@ -22,6 +23,7 @@ const PoppinsText = ({
     varient = 'default',
     color = 'black',
     style,
+    numberOfLines,
     onLayout
 }: PoppinsTextProps) => {
     const [fontsLoaded] = useFonts({
@@ -61,6 +63,7 @@ const PoppinsText = ({
         <Text
             className={`${tailwindColor} ${className}`}
             style={{ fontFamily: getFontFamily(), ...style }}
+            numberOfLines={numberOfLines}
             onLayout={onLayout}
         >
             {children}

@@ -1,9 +1,12 @@
 import { MathDocument, MathDocumentFolder } from 'types/mathDocuments';
 
 export type DocumentSortOption = 'alphabetical' | 'lastOpened' | 'created';
+export type DocumentViewMode = 'list' | 'columns';
 
 export const DOCUMENT_SORT_VARIABLE_KEY = 'documentSortOption';
+export const DOCUMENT_VIEW_MODE_VARIABLE_KEY = 'documentViewMode';
 export const DEFAULT_DOCUMENT_SORT: DocumentSortOption = 'alphabetical';
+export const DEFAULT_DOCUMENT_VIEW_MODE: DocumentViewMode = 'list';
 
 export const DOCUMENT_SORT_OPTIONS: { value: DocumentSortOption; label: string; description: string }[] = [
     { value: 'alphabetical', label: 'Alphabetical', description: 'A to Z' },
