@@ -1,0 +1,17 @@
+{
+  "name": "paper-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Paper — programmatic access to documents, folders, uploads, and AI markdown conversion.",
+  "type": "module",
+  "bin": {
+    "paper-mcp": "src/index.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.2",
+    "mupdf": "^1.26.7",
+    "zod": "^3.25.76"
+  }
+}

@@ -442,6 +442,21 @@ app/
 3. **Image Optimization**: Compress images before upload
 4. **Bundle Size**: Monitor and optimize import sizes
 
+## Programmatic / Agent Access (`paper-mcp/`)
+
+`paper-mcp/` is a standalone MCP (stdio) server that gives agents full access to
+the document system over the Convex HTTP API — no frontend needed. It reuses the
+existing `userCodeAuth` session system: a user code (`PAPER_USER_CODES_JSON` on
+the Convex deployment) is exchanged for a `sessionToken` that every
+`user_lists`/`user_vars` function already accepts.
+
+- Run it: `cd paper-mcp && npm install && node src/index.mjs`
+- Config: `PAPER_CONVEX_URL` + `PAPER_USER_CODE` env vars (session cached in `~/.paper-mcp/`)
+- Tools cover folder/document CRUD + move, image upload (same UploadThing flow
+  as the app), `paper_import_pdf` (PDF → mupdf render → pages → AI convert →
+  combined markdown), and `paper_get_markdown`.
+- See `paper-mcp/README.md` for the full tool list and MCP client config.
+
 ## Getting Started
 
 ### New Component Checklist
