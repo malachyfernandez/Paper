@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import Column from './Column';
 import Row from './Row';
 import AppButton from '../ui/buttons/AppButton';
+import DownloadButton from '../ui/buttons/DownloadButton';
 import ShareButton from '../ui/buttons/ShareButton';
 import PoppinsText from '../ui/text/PoppinsText';
 import { UserIcon } from '../ui/icons/UserIcon';
@@ -36,15 +37,22 @@ const TopSiteBar = ({ className = '', isInDocument, onHomePress, documentId, use
 
     // Get pages for this document (same logic as DocumentEditor)
     const scopedUserIds = userId ? [userId] : ['__loading__'];
-    const pages = useUserListGet<MathDocumentPage>({
+    const pageRecords = useUserListGet<MathDocumentPage>({
         key: 'mathDocumentPages',
         filterFor: documentId || '',
         userIds: scopedUserIds,
         returnTop: 100,
-    }) ?? [];
+    });
+
+    const pages = useMemo(() => pageRecords ?? [], [pageRecords]);
 
     // Find active page (same logic as DocumentEditor line 35)
     const activePage = pages.find((page) => page.value.id === activePageId.value)?.value || null;
+
+    const sortedPages = useMemo(
+        () => pages.map((record) => record.value).sort((a, b) => a.pageNumber - b.pageNumber),
+        [pages]
+    );
 
     return (
         <Column className={className}>
@@ -75,11 +83,16 @@ const TopSiteBar = ({ className = '', isInDocument, onHomePress, documentId, use
                 </Row>
                 <Row gap={6} className='items-center'>
                     {isInDocument && documentRecord.value && activePage && (
-                        <Row className='border-r border-subtle-border pr-6 h-14 items-center'>
+                        <Row className='border-r border-subtle-border pr-6 h-14 items-center' gap={2}>
                             <ShareButton
                                 documentTitle={documentRecord.value.title}
                                 documentId={documentId!}
                                 activePage={activePage}
+                            />
+                            <DownloadButton
+                                documentTitle={documentRecord.value.title}
+                                documentDescription={documentRecord.value.description}
+                                pages={sortedPages}
                             />
                         </Row>
                     )}

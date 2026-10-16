@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
+import { Link as LinkIcon } from 'lucide-react-native';
 import { MathDocument, MathDocumentPage } from 'types/mathDocuments';
 import { useToast } from '../../../../contexts/ToastContext';
 import { useUserList } from 'hooks/useUserList';
@@ -109,13 +110,13 @@ const ShareButton = ({ documentTitle, documentId, activePage, className }: Share
     return (
         <AppButton
             variant='outline-alt'
-            className={`h-10 w-20 sm:w-30 ${className || ''}`}
+            className={`h-10 w-10 sm:w-30 ${className || ''}`}
             onPress={triggerShareLink}
             disabled={isSharing}
         >
-            <PoppinsText weight='medium' className='sm:hidden'>
-                {isSharing ? '...' : 'Share'}
-            </PoppinsText>
+            <View className='sm:hidden'>
+                <LinkIcon size={16} className='text-text' />
+            </View>
             <PoppinsText weight='medium' className='hidden sm:block'>
                 {isSharing ? 'Sharing...' : 'Share Link'}
             </PoppinsText>
