@@ -8,9 +8,13 @@ import PoppinsText from '../ui/text/PoppinsText';
 import { useUserListSet } from 'hooks/useUserListSet';
 import { useUserListGet } from 'hooks/useUserListGet';
 import { useUserListRemove } from 'hooks/useUserListRemove';
+import { useUserVariable } from 'hooks/useUserVariable';
 import { useListSearch } from 'hooks/useListSearch';
 import { MathDocument, MathDocumentFolder } from 'types/mathDocuments';
+import { DEFAULT_DOCUMENT_SORT, DOCUMENT_SORT_VARIABLE_KEY, DocumentSortOption, sortDocuments, sortFolders } from 'utils/documentSort';
+import { getFolderAncestorChain } from 'utils/folderTree';
 import DocumentCard from './DocumentCard';
+import DocumentSortButton from './DocumentSortButton';
 import FolderCard from './FolderCard';
 import NewDocumentDialog from './NewDocumentDialog';
 import NewFolderDialog from './NewFolderDialog';
@@ -32,7 +36,13 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
     const [movingDocument, setMovingDocument] = useState<MathDocument | null>(null);
     const scopedUserIds = userId ? [userId] : ['__loading__'];
     const setDocument = useUserListSet<MathDocument>();
+    const setFolder = useUserListSet<MathDocumentFolder>();
     const removeFolder = useUserListRemove();
+    const [sortRecord] = useUserVariable<DocumentSortOption>({
+        key: DOCUMENT_SORT_VARIABLE_KEY,
+        defaultValue: DEFAULT_DOCUMENT_SORT,
+    });
+    const sortOption = sortRecord.value;
 
     // Use the new generic search hook
     const { items: documents, isLoading, hasResults, resultCount } = useListSearch<MathDocument>({
@@ -49,12 +59,24 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
     });
 
     const folders = useMemo(
-        () => (folderRecords ?? []).map((record) => record.value).sort((a, b) => a.name.localeCompare(b.name)),
-        [folderRecords],
+        () => sortFolders((folderRecords ?? []).map((record) => record.value), sortOption),
+        [folderRecords, sortOption],
     );
 
     const isSearching = searchQuery.trim().length > 0;
     const activeFolder = folders.find((folder) => folder.id === activeFolderId) ?? null;
+
+    // Subfolders that live directly inside the folder currently being browsed
+    const visibleFolders = useMemo(
+        () => folders.filter((folder) => (folder.parentId ?? null) === activeFolderId),
+        [folders, activeFolderId],
+    );
+
+    // Ancestor chain from the root down to the active folder (for the breadcrumb)
+    const ancestorChain = useMemo(
+        () => getFolderAncestorChain(activeFolderId, folders),
+        [activeFolderId, folders],
+    );
 
     // Reset the folder view if the open folder gets deleted or folders finish loading without it
     useEffect(() => {
@@ -63,15 +85,54 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
         }
     }, [activeFolderId, activeFolder, folderRecords]);
 
-    const folderDocumentCounts = useMemo(() => {
-        const counts: Record<string, number> = {};
-        for (const document of documents ?? []) {
-            if (document.folderId) {
-                counts[document.folderId] = (counts[document.folderId] ?? 0) + 1;
+    const folderChildrenById = useMemo(() => {
+        const map: Record<string, MathDocumentFolder[]> = {};
+        for (const folder of folders) {
+            const parentId = folder.parentId ?? null;
+            if (!parentId) {
+                continue;
             }
+            (map[parentId] ??= []).push(folder);
+        }
+        return map;
+    }, [folders]);
+
+    const subfolderCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        for (const folder of folders) {
+            counts[folder.id] = folderChildrenById[folder.id]?.length ?? 0;
         }
         return counts;
-    }, [documents]);
+    }, [folders, folderChildrenById]);
+
+    // Document counts include documents inside descendant folders
+    const folderDocumentCounts = useMemo(() => {
+        const directCounts: Record<string, number> = {};
+        for (const document of documents ?? []) {
+            if (document.folderId) {
+                directCounts[document.folderId] = (directCounts[document.folderId] ?? 0) + 1;
+            }
+        }
+
+        const totals: Record<string, number> = {};
+        const countWithDescendants = (folderId: string, seen: Set<string>): number => {
+            if (seen.has(folderId)) {
+                return 0;
+            }
+            seen.add(folderId);
+
+            let total = directCounts[folderId] ?? 0;
+            for (const child of folderChildrenById[folderId] ?? []) {
+                total += countWithDescendants(child.id, seen);
+            }
+            return total;
+        };
+
+        for (const folder of folders) {
+            totals[folder.id] = countWithDescendants(folder.id, new Set());
+        }
+        return totals;
+    }, [documents, folders, folderChildrenById]);
 
     const folderNameById = useMemo(() => {
         const names: Record<string, string> = {};
@@ -88,13 +149,8 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
             return !document.folderId;
         });
 
-        // Pinned documents float to the top, then most recently opened
-        return filtered.sort((a, b) => {
-            const pinnedDelta = (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0);
-            if (pinnedDelta !== 0) return pinnedDelta;
-            return b.lastOpenedAt - a.lastOpenedAt;
-        });
-    }, [documents, isSearching, activeFolderId]);
+        return sortDocuments(filtered, sortOption);
+    }, [documents, isSearching, activeFolderId, sortOption]);
 
     const openDocument = async (document: MathDocument) => {
         await setDocument({
@@ -142,6 +198,21 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
             ),
         );
 
+        // Subfolders move up to the deleted folder's parent instead of being deleted
+        const childFolders = folders.filter((candidate) => (candidate.parentId ?? null) === folder.id);
+        await Promise.all(
+            childFolders.map((child) =>
+                setFolder({
+                    key: 'mathDocumentFolders',
+                    itemId: child.id,
+                    value: { ...child, parentId: folder.parentId ?? null },
+                    privacy: 'PUBLIC',
+                    searchKeys: ['name'],
+                    sortKey: 'createdAt',
+                }),
+            ),
+        );
+
         await removeFolder({ key: 'mathDocumentFolders', itemId: folder.id });
         setEditingFolder(null);
         if (activeFolderId === folder.id) {
@@ -163,8 +234,8 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
         );
     }
 
-    const showFolderBrowser = !isSearching && !activeFolderId && folders.length > 0;
-    const showEmptyState = visibleDocuments.length === 0 && (!showFolderBrowser || isSearching || Boolean(activeFolderId));
+    const showFolderBrowser = !isSearching && visibleFolders.length > 0;
+    const showEmptyState = visibleDocuments.length === 0 && (isSearching || !showFolderBrowser);
 
     return (
         <Column className='flex-1' gap={6}>
@@ -183,11 +254,12 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                 </SearchField>
 
                 {/* Create Buttons */}
-                <Row gap={2}>
+                <Row gap={2} className='items-center'>
                     <View className='flex-1'>
                         <NewDocumentDialog onCreate={setActiveDocumentId} buttonVariant='green' folderId={activeFolderId} />
                     </View>
-                    <NewFolderDialog />
+                    <NewFolderDialog parentFolderId={activeFolderId} />
+                    <DocumentSortButton />
                 </Row>
             </Column>
 
@@ -197,16 +269,39 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                     <Column gap={4} className='pb-8 max-w-[800px] w-full mx-auto px-4'>
                         {/* Breadcrumb when inside a folder */}
                         {!isSearching && activeFolder && (
-                            <Row className='items-center gap-2 px-1'>
-                                <TouchableOpacity onPress={() => setActiveFolderId(null)} hitSlop={8} className='rounded-lg px-2 py-1 -ml-2 hover:bg-border/10'>
+                            <Row className='items-center gap-2 px-1 flex-wrap'>
+                                <TouchableOpacity onPress={() => setActiveFolderId(activeFolder.parentId ?? null)} hitSlop={8} className='rounded-lg px-2 py-1 -ml-2 hover:bg-border/10'>
                                     <Row className='items-center gap-1'>
                                         <ArrowLeft size={16} className='text-accent' />
-                                        <PoppinsText weight='medium' className='text-accent'>All documents</PoppinsText>
+                                        <PoppinsText weight='medium' className='text-accent'>Back</PoppinsText>
                                     </Row>
                                 </TouchableOpacity>
-                                <PoppinsText varient='subtext'>/</PoppinsText>
-                                <Folder size={16} className='text-accent' />
-                                <PoppinsText weight='bold' className='flex-1'>{activeFolder.name}</PoppinsText>
+                                <TouchableOpacity onPress={() => setActiveFolderId(null)} hitSlop={8} className='rounded-lg px-2 py-1 hover:bg-border/10'>
+                                    <PoppinsText weight='medium' className='text-accent'>All documents</PoppinsText>
+                                </TouchableOpacity>
+                                {ancestorChain.map((ancestor, index) => {
+                                    const isCurrent = index === ancestorChain.length - 1;
+
+                                    if (isCurrent) {
+                                        return (
+                                            <Row key={ancestor.id} className='items-center gap-2'>
+                                                <PoppinsText varient='subtext'>/</PoppinsText>
+                                                <Folder size={16} className='text-accent' />
+                                                <PoppinsText weight='bold'>{ancestor.name}</PoppinsText>
+                                            </Row>
+                                        );
+                                    }
+
+                                    return (
+                                        <Row key={ancestor.id} className='items-center gap-2'>
+                                            <PoppinsText varient='subtext'>/</PoppinsText>
+                                            <TouchableOpacity onPress={() => setActiveFolderId(ancestor.id)} hitSlop={8} className='rounded-lg px-1 py-1 hover:bg-border/10'>
+                                                <PoppinsText weight='medium' className='text-accent'>{ancestor.name}</PoppinsText>
+                                            </TouchableOpacity>
+                                        </Row>
+                                    );
+                                })}
+                                <View className='flex-1' />
                                 <IconButton onPress={() => setEditingFolder(activeFolder)} tooltip='Edit folder'>
                                     <Pencil size={16} className='text-subtext' />
                                 </IconButton>
@@ -219,15 +314,16 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                             </PoppinsText>
                         )}
 
-                        {/* Folders (root view only) */}
+                        {/* Folders in the current view */}
                         {showFolderBrowser && (
                             <Column gap={3}>
-                                <PoppinsText varient='cardHeader' className='px-2'>Folders</PoppinsText>
-                                {folders.map((folder) => (
+                                <PoppinsText varient='cardHeader' className='px-2'>{activeFolder ? 'Subfolders' : 'Folders'}</PoppinsText>
+                                {visibleFolders.map((folder) => (
                                     <FolderCard
                                         key={folder.id}
                                         folder={folder}
                                         documentCount={folderDocumentCounts[folder.id] ?? 0}
+                                        folderCount={subfolderCounts[folder.id] ?? 0}
                                         onPress={() => setActiveFolderId(folder.id)}
                                         onEdit={() => setEditingFolder(folder)}
                                     />
@@ -287,7 +383,7 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                                     {isSearching
                                         ? `Try adjusting your search for "${searchQuery}"`
                                         : activeFolder
-                                            ? 'Move documents here or create a new one to fill this folder.'
+                                            ? 'Move documents here or create a subfolder to fill this folder.'
                                             : 'Create your first document to start converting handwritten notes to Markdown.'}
                                 </PoppinsText>
                             </Column>
@@ -298,6 +394,7 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
 
             <EditFolderDialog
                 folder={editingFolder}
+                folders={folders}
                 isOpen={editingFolder !== null}
                 onOpenChange={(open) => { if (!open) setEditingFolder(null); }}
                 onDelete={(folder) => void deleteFolder(folder)}

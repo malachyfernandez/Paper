@@ -18,6 +18,7 @@ export interface MathDocumentFolder {
     id: string;
     name: string;
     createdAt: number;
+    parentId?: string | null;
 }
 
 export interface MathDocumentPageFollowUp {

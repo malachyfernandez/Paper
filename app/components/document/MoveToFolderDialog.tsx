@@ -10,6 +10,7 @@ import DialogHeader from '../ui/dialog/DialogHeader';
 import { useUserListSet } from 'hooks/useUserListSet';
 import { MathDocument, MathDocumentFolder } from 'types/mathDocuments';
 import { generateId } from 'utils/generateId';
+import { flattenFolderTree } from 'utils/folderTree';
 import { Check, Folder, Home } from 'lucide-react-native';
 
 interface MoveToFolderDialogProps {
@@ -59,6 +60,7 @@ const MoveToFolderDialog = ({ document, folders, isOpen, onOpenChange }: MoveToF
                 id: folderId,
                 name: newFolderName.trim(),
                 createdAt: Date.now(),
+                parentId: null,
             },
             privacy: 'PUBLIC',
             searchKeys: ['name'],
@@ -69,13 +71,15 @@ const MoveToFolderDialog = ({ document, folders, isOpen, onOpenChange }: MoveToF
     };
 
     const currentFolderId = document?.folderId ?? null;
+    const flattenedFolders = flattenFolderTree(folders);
 
-    const renderRow = (key: string, label: string, icon: React.ReactNode, isCurrent: boolean, onPress: () => void) => (
+    const renderRow = (key: string, label: string, icon: React.ReactNode, isCurrent: boolean, onPress: () => void, depth = 0) => (
         <TouchableOpacity
             key={key}
             onPress={onPress}
             activeOpacity={0.8}
-            className={`w-full rounded-xl border p-4 ${isCurrent ? 'border-accent bg-accent/10' : 'border-subtle-border bg-inner-background'} hover:brightness-110`}
+            className={`self-stretch rounded-xl border p-4 ${isCurrent ? 'border-accent bg-accent/10' : 'border-subtle-border bg-inner-background'} hover:brightness-110`}
+            style={{ marginLeft: depth * 20 }}
         >
             <Row className='items-center justify-between'>
                 <Row className='items-center gap-2 flex-1'>
@@ -105,13 +109,14 @@ const MoveToFolderDialog = ({ document, folders, isOpen, onOpenChange }: MoveToF
                                         currentFolderId === null,
                                         () => void moveDocument(null),
                                     )}
-                                    {folders.map((folder) =>
+                                    {flattenedFolders.map(({ folder, depth }) =>
                                         renderRow(
                                             folder.id,
                                             folder.name,
                                             <Folder size={18} className='text-accent' />,
                                             currentFolderId === folder.id,
                                             () => void moveDocument(folder.id),
+                                            depth,
                                         ),
                                     )}
                                 </Column>

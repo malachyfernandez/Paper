@@ -9,11 +9,12 @@ import IconButton from '../ui/buttons/IconButton';
 interface FolderCardProps {
     folder: MathDocumentFolder;
     documentCount: number;
+    folderCount?: number;
     onPress: () => void;
     onEdit: () => void;
 }
 
-const FolderCard = ({ folder, documentCount, onPress, onEdit }: FolderCardProps) => {
+const FolderCard = ({ folder, documentCount, folderCount = 0, onPress, onEdit }: FolderCardProps) => {
     return (
         <TouchableOpacity
             onPress={onPress}
@@ -28,6 +29,7 @@ const FolderCard = ({ folder, documentCount, onPress, onEdit }: FolderCardProps)
                     </PoppinsText>
                     <PoppinsText varient='subtext'>
                         {documentCount} {documentCount === 1 ? 'document' : 'documents'}
+                        {folderCount > 0 ? `, ${folderCount} ${folderCount === 1 ? 'folder' : 'folders'}` : ''}
                     </PoppinsText>
                 </Row>
 

@@ -13,9 +13,10 @@ import { FolderPlus } from 'lucide-react-native';
 
 interface NewFolderDialogProps {
     onCreate?: (folderId: string) => void;
+    parentFolderId?: string | null;
 }
 
-const NewFolderDialog = ({ onCreate }: NewFolderDialogProps) => {
+const NewFolderDialog = ({ onCreate, parentFolderId = null }: NewFolderDialogProps) => {
     const setFolder = useUserListSet<MathDocumentFolder>();
     const [isOpen, setIsOpen] = useState(false);
     const [name, setName] = useState('');
@@ -30,6 +31,7 @@ const NewFolderDialog = ({ onCreate }: NewFolderDialogProps) => {
                 id: folderId,
                 name: name.trim() || 'Untitled folder',
                 createdAt: Date.now(),
+                parentId: parentFolderId,
             },
             privacy: 'PUBLIC',
             searchKeys: ['name'],
@@ -56,7 +58,7 @@ const NewFolderDialog = ({ onCreate }: NewFolderDialogProps) => {
                 <ConvexDialog.Content>
                     <ConvexDialog.Close iconProps={{ color: 'rgb(246, 238, 219)' }} className='w-10 h-10 bg-accent-hover absolute right-4 top-4 z-10' />
                     <Column>
-                        <DialogHeader text='Create folder' subtext='Organize documents into a folder.' />
+                        <DialogHeader text='Create folder' subtext={parentFolderId ? 'This folder will be created inside the current folder.' : 'Organize documents into a folder.'} />
                         <Column className='pt-5' gap={3}>
                             <Column gap={1}>
                                 <PoppinsText weight='medium'>Name</PoppinsText>
