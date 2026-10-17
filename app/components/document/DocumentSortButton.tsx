@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable } from 'react-native';
-import { ArrowUpDown, Check, ChevronDown } from 'lucide-react-native';
+import { ArrowUpDown, Check } from 'lucide-react-native';
 import { useUserVariable } from 'hooks/useUserVariable';
 import {
     DEFAULT_DOCUMENT_SORT,
@@ -43,14 +43,10 @@ const DocumentSortButton = ({ className }: DocumentSortButtonProps) => {
         >
             <AppButton
                 variant='outline-alt'
-                className='h-10 w-10 sm:w-auto sm:px-3'
+                className='h-12 w-12'
                 onPress={menu.toggle}
             >
-                <ArrowUpDown size={15} className='text-text' />
-                <PoppinsText weight='medium' className='hidden sm:block text-sm'>
-                    {currentOption.label}
-                </PoppinsText>
-                <ChevronDown size={13} className='text-text hidden sm:block' />
+                <ArrowUpDown size={17} className='text-text' />
             </AppButton>
 
             <HoverMenuPopup
