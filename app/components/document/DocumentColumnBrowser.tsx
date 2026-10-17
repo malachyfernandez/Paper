@@ -594,7 +594,7 @@ const DocumentColumnBrowser = ({
                                                         key={item.folder.id}
                                                         nativeID={id === leadId ? activeRowDomId : undefined}
                                                         onPress={(event) => handleItemClick(colIndex, item, event)}
-                                                        className={`flex-row items-center gap-2 rounded-lg px-2 py-1.5 ${isActive ? 'bg-text' : onPath ? 'bg-text/15' : 'hover:bg-text/5'}`}
+                                                        className={`flex-row items-center gap-2 rounded-lg px-2 py-1.5 select-none ${isActive ? 'bg-text' : onPath ? 'bg-text/15' : 'hover:bg-text/5'}`}
                                                     >
                                                         <Folder size={15} className={isActive ? 'text-background' : 'text-accent'} />
                                                         <PoppinsText
@@ -616,7 +616,7 @@ const DocumentColumnBrowser = ({
                                                     key={item.document.id}
                                                     nativeID={id === leadId ? activeRowDomId : undefined}
                                                     onPress={(event) => handleItemClick(colIndex, item, event)}
-                                                    className={`flex-row items-center gap-2 rounded-lg px-2 py-1.5 ${isActive ? 'bg-text' : 'hover:bg-text/5'}`}
+                                                    className={`flex-row items-center gap-2 rounded-lg px-2 py-1.5 select-none ${isActive ? 'bg-text' : 'hover:bg-text/5'}`}
                                                 >
                                                     <FileText size={15} className={isActive ? 'text-background' : 'text-accent'} />
                                                     {item.document.pinnedAt ? (

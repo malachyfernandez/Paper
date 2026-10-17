@@ -55,7 +55,7 @@ const PageListItem = ({ page, isActive, isSelected = false, onPress, onConfigure
         <TouchableOpacity
             onPress={handlePress}
             activeOpacity={0.85}
-            className={`rounded-xl border p-3 ${containerClass}`}
+            className={`rounded-xl border p-3 select-none ${containerClass}`}
         >
             <Row className='items-center justify-between'>
                 <Column gap={1} className='flex-1'>
