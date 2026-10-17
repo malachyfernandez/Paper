@@ -81,9 +81,12 @@ const loadSourceBytes = async (source, fallbackName = 'image') => {
 const convertPageRecord = async ({ document, page, guidance, followUpPrompt }) => {
     if (!page.imageUrl) throw new Error(`Page ${page.pageNumber} has no image to convert.`);
 
+    // Resolution order mirrors the app: explicit arg > document aiGuidance > default.
+    const effectiveGuidance = guidance || document.aiGuidance?.trim() || DEFAULT_GUIDANCE;
+
     const result = await action('mathAi:convertMathImageToMarkdown', {
         imageUrl: page.imageUrl,
-        guidance: guidance || DEFAULT_GUIDANCE,
+        guidance: effectiveGuidance,
         currentMarkdown: page.markdown?.trim() ? page.markdown : undefined,
         followUpPrompt: followUpPrompt || undefined,
         documentTitle: document.title,
@@ -93,7 +96,7 @@ const convertPageRecord = async ({ document, page, guidance, followUpPrompt }) =
     const nextPage = {
         ...page,
         markdown: result.markdown,
-        lastAiPrompt: followUpPrompt || guidance || DEFAULT_GUIDANCE,
+        lastAiPrompt: followUpPrompt || effectiveGuidance,
         lastGeneratedAt: Date.now(),
     };
     await savePage(nextPage);

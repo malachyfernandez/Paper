@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAction } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { MathDocumentPage } from 'types/mathDocuments';
-import { useUserVariable } from 'hooks/useUserVariable';
+import { useAiGuidance } from 'hooks/useAiGuidance';
 
 interface UseMathGenerationProps {
     page: MathDocumentPage;
@@ -17,12 +17,8 @@ export const useMathGeneration = ({ page, onUpdatePage, onUpdateMarkdown, onFoll
     const [isGenerating, setIsGenerating] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
 
-    // Get user-wide AI guidance
-    const [aiGuidance] = useUserVariable({
-        key: 'aiGuidance',
-        defaultValue: 'Convert this handwritten math to Markdown + LaTeX with exact transcription.',
-        privacy: 'PRIVATE'
-    });
+    // Document-level guidance falls back to the account default
+    const aiGuidance = useAiGuidance(page.documentId);
 
     const handleInitialGeneration = async () => {
         if (!page.imageUrl) {
@@ -36,7 +32,7 @@ export const useMathGeneration = ({ page, onUpdatePage, onUpdateMarkdown, onFoll
 
             const result = await convertMathImageToMarkdown({
                 imageUrl: page.imageUrl,
-                guidance: aiGuidance.value,
+                guidance: aiGuidance,
                 currentMarkdown: page.markdown,
                 followUpPrompt: undefined,
             });
@@ -44,7 +40,7 @@ export const useMathGeneration = ({ page, onUpdatePage, onUpdateMarkdown, onFoll
             const nextPage = {
                 ...page,
                 markdown: result.markdown,
-                lastAiPrompt: aiGuidance.value,
+                lastAiPrompt: aiGuidance,
                 lastGeneratedAt: Date.now(),
             };
 

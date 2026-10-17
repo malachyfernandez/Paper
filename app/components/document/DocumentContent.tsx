@@ -19,7 +19,7 @@ import { useGeneration } from '../../../contexts/GenerationContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { useUserListSet } from 'hooks/useUserListSet';
 import { useCreateUndoSnapshot, useUndoRedo } from 'hooks/useUndoRedo';
-import { useUserVariable } from 'hooks/useUserVariable';
+import { useAiGuidance } from 'hooks/useAiGuidance';
 import { generateId } from 'utils/generateId';
 import DocumentHeader from './DocumentHeader';
 import ContentEditor from './ContentEditor';
@@ -61,12 +61,8 @@ const DocumentContent = ({ documentTitle, documentId, activePage, onReplacePage,
         });
     };
 
-    // Get user-wide AI guidance
-    const [aiGuidance] = useUserVariable({
-        key: 'aiGuidance',
-        defaultValue: 'Convert this handwritten notes to Markdown with LaTeX support.',
-        privacy: 'PRIVATE'
-    });
+    // Document-level guidance falls back to the account default
+    const aiGuidance = useAiGuidance(documentId);
 
     const isGenerating = isPageGenerating(activePage.id);
 
@@ -143,7 +139,7 @@ const DocumentContent = ({ documentTitle, documentId, activePage, onReplacePage,
 
             const result = await convertMathImageToMarkdown({
                 imageUrl: currentPage.imageUrl,
-                guidance: aiGuidance.value,
+                guidance: aiGuidance,
                 currentMarkdown: currentPage.markdown,
                 followUpPrompt: undefined,
             });
@@ -151,7 +147,7 @@ const DocumentContent = ({ documentTitle, documentId, activePage, onReplacePage,
             const nextPage = {
                 ...currentPage,
                 markdown: result.markdown,
-                lastAiPrompt: aiGuidance.value,
+                lastAiPrompt: aiGuidance,
                 lastGeneratedAt: Date.now(),
             };
 

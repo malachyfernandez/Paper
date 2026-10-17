@@ -9,7 +9,7 @@ import { useAction } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { MathDocumentPage } from 'types/mathDocuments';
 import { useGeneration } from '../../../contexts/GenerationContext';
-import { useUserVariable } from 'hooks/useUserVariable';
+import { useAiGuidance } from 'hooks/useAiGuidance';
 import { useCreateUndoSnapshot, useUndoRedo } from 'hooks/useUndoRedo';
 import { generateId } from 'utils/generateId';
 import AiPromptInput from './AiPromptInput';
@@ -43,20 +43,16 @@ const AiConversionPanel = ({ page, onUpdatePage, onUpdateMarkdown, onLayout, set
         });
     };
     
-    // Get user-wide AI guidance
-    const [aiGuidance] = useUserVariable({
-        key: 'aiGuidance',
-        defaultValue: 'Convert this handwritten notes to Markdown with LaTeX support.',
-        privacy: 'PRIVATE'
-    });
-    
+    // Document-level guidance falls back to the account default
+    const aiGuidance = useAiGuidance(page.documentId);
+
     const isGenerating = isPageGenerating(page.id);
 
     const getContextualPrompt = () => {
         if (page.markdown) {
             return `Follow-up: ${prompt || 'Continue working on this notes content'}`;
         } else {
-            return prompt || aiGuidance.value;
+            return prompt || aiGuidance;
         }
     };
 

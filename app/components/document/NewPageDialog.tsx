@@ -14,7 +14,7 @@ import FileUrlModal from './FileUrlModal';
 import { uploadWebFiles, UploadProgress, UploadThingSignedUpload } from './uploadWebFiles';
 import { useUserListSet } from 'hooks/useUserListSet';
 import { useUserListRemove } from 'hooks/useUserListRemove';
-import { useUserVariable } from 'hooks/useUserVariable';
+import { useAiGuidance } from 'hooks/useAiGuidance';
 import { useCreateUndoSnapshot, useUndoRedo } from 'hooks/useUndoRedo';
 import { useAction } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
@@ -60,12 +60,8 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
     const [statusMessage, setStatusMessage] = useState('');
     const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
 
-    // Get user-wide AI guidance
-    const [aiGuidance] = useUserVariable({
-        key: 'aiGuidance',
-        defaultValue: 'Convert this handwritten notes to Markdown with LaTeX support.',
-        privacy: 'PRIVATE'
-    });
+    // Document-level guidance falls back to the account default
+    const aiGuidance = useAiGuidance(documentId);
 
     const handleFilesReady = async (files: Array<{ id: string; previewUrl: string; file: File; uploadedUrl?: string }>) => {
         try {
@@ -231,7 +227,7 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
 
                     const result = await convertMathImageToMarkdown({
                         imageUrl: page.imageUrl,
-                        guidance: aiGuidance.value,
+                        guidance: aiGuidance,
                         currentMarkdown: '',
                         documentTitle: '', // You might want to pass document title here
                         pageTitle: '', // Removed page title from generation
@@ -240,7 +236,7 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
                     const updatedPage: MathDocumentPage = {
                         ...page,
                         markdown: result.markdown,
-                        lastAiPrompt: aiGuidance.value,
+                        lastAiPrompt: aiGuidance,
                         lastGeneratedAt: Date.now(),
                     };
 

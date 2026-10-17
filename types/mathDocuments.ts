@@ -12,6 +12,8 @@ export interface MathDocument {
     lastOpenedAt: number;
     folderId?: string | null;
     pinnedAt?: number;
+    /** Per-document AI conversion guidance; empty/unset falls back to the account default. */
+    aiGuidance?: string;
 }
 
 export interface MathDocumentFolder {
