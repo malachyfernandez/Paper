@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, TouchableOpacity, View } from 'react-native';
 import { ScrollShadow, SearchField } from 'heroui-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +24,7 @@ import MoveToFolderDialog from './MoveToFolderDialog';
 import { ArrowLeft, Columns3, FileText, Folder, List, Pencil } from 'lucide-react-native';
 import IconButton from '../ui/buttons/IconButton';
 import LoadingState from '../ui/loading/LoadingState';
+import LoadingContainer from '../ui/loading/LoadingContainer';
 
 interface DocumentHomePageProps {
     userId: string;
@@ -49,6 +50,11 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
         defaultValue: DEFAULT_DOCUMENT_VIEW_MODE,
     });
     const viewMode: DocumentViewMode = viewModeRecord.value === 'columns' ? 'columns' : 'list';
+    /** Where the user last was in the file browser — survives navigation/reloads. */
+    const [browserFolderRecord, setBrowserFolder] = useUserVariable<string>({
+        key: 'documentBrowserFolder',
+        defaultValue: '',
+    });
     /** Deepest column open in the Finder-style browser (drives create-button targets). */
     const [columnsFolderId, setColumnsFolderId] = useState<string | null>(null);
     /** List view: folders expanded in place via their disclosure triangle. */
@@ -121,6 +127,27 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
             setActiveFolderId(null);
         }
     }, [activeFolderId, activeFolder, folderRecords]);
+
+    // Restore the last browsed folder once the persisted location resolves.
+    const didRestoreFolderRef = useRef(false);
+    useEffect(() => {
+        if (didRestoreFolderRef.current || browserFolderRecord.state.isSyncing) return;
+        didRestoreFolderRef.current = true;
+        const stored = browserFolderRecord.value;
+        if (stored) {
+            setActiveFolderId(stored);
+            setColumnsFolderId(stored);
+        }
+    }, [browserFolderRecord]);
+
+    // Persist wherever the user currently is in the file browser.
+    const currentBrowserFolderId = viewMode === 'columns' ? columnsFolderId : activeFolderId;
+    useEffect(() => {
+        if (!didRestoreFolderRef.current) return;
+        if ((currentBrowserFolderId ?? '') !== (browserFolderRecord.value ?? '')) {
+            setBrowserFolder(currentBrowserFolderId ?? '');
+        }
+    }, [currentBrowserFolderId, browserFolderRecord.value, setBrowserFolder]);
 
     const folderChildrenById = useMemo(() => {
         const map: Record<string, MathDocumentFolder[]> = {};
@@ -379,7 +406,19 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                 </Row>
             </Column>
 
-            {/* Documents List */}
+            {/* Documents List — held back until records + persisted prefs resolve,
+                so the browser never flashes an empty/wrong folder first. */}
+            <LoadingContainer
+                dependencies={[
+                    folderRecords,
+                    documents,
+                    viewModeRecord,
+                    sortRecord,
+                    browserFolderRecord,
+                ]}
+                loadingText='Loading your files'
+                className='flex-1'
+            >
             <ScrollShadow LinearGradientComponent={LinearGradient} className='flex-1'>
                 {showColumns ? (
                     <DocumentColumnBrowser
@@ -514,6 +553,7 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                 </ScrollView>
                 )}
             </ScrollShadow>
+            </LoadingContainer>
 
             <EditFolderDialog
                 folder={editingFolder}
