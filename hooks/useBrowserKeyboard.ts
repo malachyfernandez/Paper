@@ -3,9 +3,11 @@ import { Platform } from 'react-native';
 
 interface BrowserKeyboardConfig {
     /** Arrow keys, fired when no modifier (except shift) is held and focus isn't in a text field. */
-    onArrowKey?: (dir: 'up' | 'down' | 'left' | 'right') => void;
+    onArrowKey?: (dir: 'up' | 'down' | 'left' | 'right', shiftKey: boolean) => void;
     /** Enter (or -> semantics): open the current selection. */
     onPrimaryAction?: () => void;
+    /** Cmd/Ctrl+A: select everything in the focused list. */
+    onSelectAll?: () => void;
     /** Cmd/Ctrl+C */
     onCopy?: () => void;
     /** Cmd/Ctrl+V */
@@ -37,14 +39,15 @@ const isEditableTarget = (target: EventTarget | null) => {
 export function useBrowserKeyboard({
     onArrowKey,
     onPrimaryAction,
+    onSelectAll,
     onCopy,
     onPaste,
     onMovePaste,
     onDelete,
     enabled = true,
 }: BrowserKeyboardConfig) {
-    const handlersRef = useRef({ onArrowKey, onPrimaryAction, onCopy, onPaste, onMovePaste, onDelete });
-    handlersRef.current = { onArrowKey, onPrimaryAction, onCopy, onPaste, onMovePaste, onDelete };
+    const handlersRef = useRef({ onArrowKey, onPrimaryAction, onSelectAll, onCopy, onPaste, onMovePaste, onDelete });
+    handlersRef.current = { onArrowKey, onPrimaryAction, onSelectAll, onCopy, onPaste, onMovePaste, onDelete };
 
     useEffect(() => {
         if (!enabled || Platform.OS !== 'web' || typeof window === 'undefined') {
@@ -52,9 +55,15 @@ export function useBrowserKeyboard({
         }
 
         const handler = (e: KeyboardEvent) => {
-            const { onArrowKey, onPrimaryAction, onCopy, onPaste, onMovePaste, onDelete } = handlersRef.current;
+            const { onArrowKey, onPrimaryAction, onSelectAll, onCopy, onPaste, onMovePaste, onDelete } = handlersRef.current;
             const mod = e.metaKey || e.ctrlKey;
             const key = e.key.toLowerCase();
+
+            if (mod && key === 'a' && !e.altKey && !isEditableTarget(e.target)) {
+                e.preventDefault();
+                onSelectAll?.();
+                return;
+            }
 
             if (mod && key === 'c' && !e.altKey && !isEditableTarget(e.target)) {
                 // Let a real text selection copy normally instead of copying the item.
@@ -83,18 +92,19 @@ export function useBrowserKeyboard({
             const dir = ARROW_DIRS[e.key];
             if (dir && !mod && !e.altKey && !isEditableTarget(e.target)) {
                 e.preventDefault();
-                onArrowKey?.(dir);
+                onArrowKey?.(dir, e.shiftKey);
                 return;
             }
 
             if (e.key === 'Enter' && !mod && !e.altKey && !e.shiftKey && !isEditableTarget(e.target)) {
+                if (!onPrimaryAction) return;
                 // Let focused buttons activate themselves on Enter.
                 const target = e.target as HTMLElement | null;
                 if (target?.closest?.('button, [role="button"]')) {
                     return;
                 }
                 e.preventDefault();
-                onPrimaryAction?.();
+                onPrimaryAction();
             }
         };
 

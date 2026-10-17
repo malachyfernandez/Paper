@@ -10,11 +10,13 @@ import IconButton from '../ui/buttons/IconButton';
 import PoppinsText from '../ui/text/PoppinsText';
 import { useBrowserKeyboard } from 'hooks/useBrowserKeyboard';
 import { useUserListGet } from 'hooks/useUserListGet';
+import { useUserListRemove } from 'hooks/useUserListRemove';
 import { useUserListSet } from 'hooks/useUserListSet';
 import { useToast } from 'contexts/ToastContext';
 import { MathDocument, MathDocumentFolder, MathDocumentPage } from 'types/mathDocuments';
 import { DocumentSortOption, sortDocuments, sortFolders } from 'utils/documentSort';
 import { getFolderAncestorChain, getFolderAndDescendantIds, makeCopyName } from 'utils/folderTree';
+import { applySelectClick, pressModifiers, rangeBetween } from 'utils/multiSelect';
 import { generateId } from 'utils/generateId';
 
 type ColumnItem = { kind: 'folder'; folder: MathDocumentFolder } | { kind: 'document'; document: MathDocument };
@@ -56,6 +58,7 @@ const DocumentColumnBrowser = ({
     const setDocument = useUserListSet<MathDocument>();
     const setFolder = useUserListSet<MathDocumentFolder>();
     const setPage = useUserListSet<MathDocumentPage>();
+    const removeListItem = useUserListRemove();
 
     const pageRecords = useUserListGet<MathDocumentPage>({
         key: 'mathDocumentPages',
@@ -70,8 +73,12 @@ const DocumentColumnBrowser = ({
     );
     /** A document picked in the deepest column; null means the deepest chain folder is the selection. */
     const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
-    /** Single-item clipboard, Finder-style: Cmd+C copies, Cmd+V pastes a copy, Cmd+Opt+V moves. */
-    const [clipboard, setClipboard] = useState<ColumnItem | null>(null);
+    /** Every selected id in the focus column (contains the lead id); Finder multi-select. */
+    const [focusIds, setFocusIds] = useState<Set<string>>(new Set());
+    /** Shift-click/shift-arrow range anchor. */
+    const [selAnchorId, setSelAnchorId] = useState<string | null>(null);
+    /** Clipboard, Finder-style: Cmd+C copies, Cmd+V pastes copies, Cmd+Opt+V moves. */
+    const [clipboard, setClipboard] = useState<ColumnItem[]>([]);
 
     /** DOM id stamped on the active row so it can be scrolled into view. */
     const activeRowDomId = `doc-col-active-${useId()}`;
@@ -154,6 +161,11 @@ const DocumentColumnBrowser = ({
         if (selectedDocumentId && !documentById.has(selectedDocumentId)) {
             setSelectedDocumentId(null);
         }
+        // Prune selected ids that no longer exist.
+        setFocusIds((prev) => {
+            const next = new Set([...prev].filter((id) => folderById.has(id) || documentById.has(id)));
+            return next.size === prev.size ? prev : next;
+        });
     }, [folders, documents, folderById, documentById, selectedDocumentId]);
 
     // Keep the keyboard-driven selection scrolled into view (web only).
@@ -175,8 +187,9 @@ const DocumentColumnBrowser = ({
         ];
     };
 
-    /** Make a row in column `colIndex` the active selection. */
+    /** Make a row in column `colIndex` the lead selection (single-selects it). */
     const selectColumnItem = (colIndex: number, item: ColumnItem) => {
+        const id = item.kind === 'folder' ? item.folder.id : item.document.id;
         if (item.kind === 'folder') {
             setColumnPath((prev) => [...prev.slice(0, colIndex), item.folder.id]);
             setSelectedDocumentId(null);
@@ -184,25 +197,37 @@ const DocumentColumnBrowser = ({
             setColumnPath((prev) => prev.slice(0, colIndex));
             setSelectedDocumentId(item.document.id);
         }
+        setFocusIds(new Set([id]));
+        setSelAnchorId(id);
     };
 
     /** macOS column-view arrows. The "focus column" is the deepest column when
      *  a document is selected, else the column holding the deepest chain folder. */
-    const handleColumnArrow = (dir: 'up' | 'down' | 'left' | 'right') => {
+    const focusColumnIndex = selectedDocumentId ? columnPath.length : columnPath.length - 1;
+
+    /** The id of the lead item in the focus column (drives path/preview). */
+    const leadId = selectedDocumentId ?? activeFolderId;
+
+    const handleColumnArrow = (dir: 'up' | 'down' | 'left' | 'right', shiftKey = false) => {
         // Rows hold DOM focus after clicks; blur so a following Enter doesn't
         // "click" the stale row and yank the selection back.
         if (typeof document !== 'undefined') {
             (document.activeElement as HTMLElement | null)?.blur?.();
         }
 
-        const focusCol = selectedDocumentId ? columnPath.length : columnPath.length - 1;
+        const focusCol = focusColumnIndex;
 
         if (dir === 'left') {
             if (selectedDocumentId) {
                 setSelectedDocumentId(null);
             } else if (columnPath.length > 1) {
                 setColumnPath((prev) => prev.slice(0, -1));
+            } else {
+                return;
             }
+            const id = columnPath[columnPath.length - (selectedDocumentId ? 1 : 2)] ?? null;
+            setFocusIds(new Set(id ? [id] : []));
+            setSelAnchorId(id);
             return;
         }
 
@@ -229,12 +254,80 @@ const DocumentColumnBrowser = ({
         const parent = focusCol === 0 ? null : columnPath[focusCol - 1];
         const items = columnItems(parent);
         if (!items.length) return;
+        const orderedIds = items.map((item) => (item.kind === 'folder' ? item.folder.id : item.document.id));
         const currentIndex = items.findIndex((item) =>
             item.kind === 'folder' ? item.folder.id === columnPath[focusCol] : item.document.id === selectedDocumentId,
         );
         const start = currentIndex < 0 ? (delta > 0 ? -1 : items.length) : currentIndex;
         const next = Math.max(0, Math.min(items.length - 1, start + delta));
+
+        if (shiftKey) {
+            // Extend: move the lead one step and select the anchor->lead range.
+            const nextItem = items[next];
+            const nextId = nextItem.kind === 'folder' ? nextItem.folder.id : nextItem.document.id;
+            const anchor = selAnchorId ?? (leadId ?? nextId);
+            selectColumnItem(focusCol, nextItem);
+            setFocusIds(new Set(rangeBetween(orderedIds, anchor, nextId)));
+            setSelAnchorId(anchor);
+            return;
+        }
+
         selectColumnItem(focusCol, items[next]);
+    };
+
+    /** Click on a row: modifiers only apply inside the focus column. */
+    const handleItemClick = (colIndex: number, item: ColumnItem, event: unknown) => {
+        const id = item.kind === 'folder' ? item.folder.id : item.document.id;
+        const modifiers = pressModifiers(event);
+
+        if ((modifiers.meta || modifiers.shift) && colIndex === focusColumnIndex) {
+            const parent = colIndex === 0 ? null : columnPath[colIndex - 1];
+            const orderedIds = columnItems(parent).map((entry) =>
+                entry.kind === 'folder' ? entry.folder.id : entry.document.id,
+            );
+            const result = applySelectClick(focusIds, selAnchorId, id, orderedIds, modifiers);
+            setFocusIds(result.ids);
+            setSelAnchorId(result.anchorId);
+            // Shift-clicks also move the lead so the preview/next column follows.
+            if (result.kind === 'range') {
+                if (item.kind === 'folder') {
+                    setColumnPath((prev) => [...prev.slice(0, colIndex), item.folder.id]);
+                    setSelectedDocumentId(null);
+                } else {
+                    setColumnPath((prev) => prev.slice(0, colIndex));
+                    setSelectedDocumentId(item.document.id);
+                }
+            }
+            return;
+        }
+
+        // Plain click on the one already-selected document opens it.
+        if (item.kind === 'document' && item.document.id === selectedDocumentId && focusIds.size <= 1) {
+            onOpenDocument(item.document);
+            return;
+        }
+
+        selectColumnItem(colIndex, item);
+    };
+
+    /** Every selected item in the focus column, in display order. */
+    const focusItems = ((): ColumnItem[] => {
+        if (focusColumnIndex < 0) return [];
+        const parent = focusColumnIndex === 0 ? null : columnPath[focusColumnIndex - 1];
+        const items = columnItems(parent);
+        const selected = items.filter((item) =>
+            focusIds.has(item.kind === 'folder' ? item.folder.id : item.document.id),
+        );
+        // The lead may not be in focusIds yet (first load/path change).
+        if (!selected.length && activeItem) return [activeItem];
+        return selected;
+    })();
+
+    const handleSelectAll = () => {
+        if (focusColumnIndex < 0) return;
+        const parent = focusColumnIndex === 0 ? null : columnPath[focusColumnIndex - 1];
+        const items = columnItems(parent);
+        setFocusIds(new Set(items.map((item) => (item.kind === 'folder' ? item.folder.id : item.document.id))));
     };
 
     // ------------------------------------------------------------- clipboard ops
@@ -368,41 +461,97 @@ const DocumentColumnBrowser = ({
     };
 
     const handleCopy = () => {
-        if (!activeItem) return;
-        setClipboard(activeItem);
-        const name = activeItem.kind === 'folder' ? activeItem.folder.name : activeItem.document.title;
-        showToast(`Copied "${name}". Paste with Cmd+V, move with Cmd+Opt+V.`);
+        if (!focusItems.length) return;
+        setClipboard(focusItems);
+        const names = focusItems
+            .map((item) => (item.kind === 'folder' ? item.folder.name : item.document.title));
+        showToast(
+            focusItems.length === 1
+                ? `Copied "${names[0]}". Paste with Cmd+V, move with Cmd+Opt+V.`
+                : `Copied ${focusItems.length} items. Paste with Cmd+V, move with Cmd+Opt+V.`,
+        );
     };
 
     const handlePaste = async () => {
-        if (!clipboard) return;
-        if (clipboard.kind === 'document') {
-            await cloneDocumentInto(clipboard.document, activeFolderId);
-        } else {
-            await cloneFolderInto(clipboard.folder, activeFolderId);
+        for (const item of clipboard) {
+            if (item.kind === 'document') {
+                await cloneDocumentInto(item.document, activeFolderId);
+            } else {
+                await cloneFolderInto(item.folder, activeFolderId);
+            }
         }
     };
 
     const handleMovePaste = async () => {
-        if (!clipboard) return;
-        // Finder semantics: the "cut" item stays in the clipboard if the move is refused.
-        if (await moveItemInto(clipboard, activeFolderId)) {
-            setClipboard(null);
+        const stillOnClipboard: ColumnItem[] = [];
+        for (const item of clipboard) {
+            // Finder semantics: refused moves stay in the clipboard.
+            if (!(await moveItemInto(item, activeFolderId))) {
+                stillOnClipboard.push(item);
+            }
         }
+        setClipboard(stillOnClipboard);
+    };
+
+    /** Delete the focus selection — same semantics as the dialogs: deleting a
+     *  document removes it and its pages; deleting a folder unfiles its
+     *  documents and reparents its subfolders. */
+    const handleDeleteSelection = async () => {
+        if (!focusItems.length) return;
+        const deletableDocs = focusItems.filter((item) => item.kind === 'document');
+        const deletableFolders = focusItems.filter((item) => item.kind === 'folder');
+
+        for (const item of deletableDocs) {
+            const pages = allPages.filter((page) => page.documentId === item.document.id);
+            for (const page of pages) {
+                await removeListItem({ key: 'mathDocumentPages', itemId: page.id });
+            }
+            await removeListItem({ key: 'mathDocuments', itemId: item.document.id });
+        }
+
+        for (const item of deletableFolders) {
+            const folder = item.folder;
+            const inside = documents.filter((document) => (document.folderId ?? null) === folder.id);
+            for (const document of inside) {
+                await setDocument({
+                    key: 'mathDocuments',
+                    itemId: document.id,
+                    value: { ...document, folderId: folder.parentId ?? null },
+                    privacy: 'PUBLIC',
+                    searchKeys: ['title', 'description'],
+                    sortKey: 'lastOpenedAt',
+                });
+            }
+            const children = folders.filter((candidate) => (candidate.parentId ?? null) === folder.id);
+            for (const child of children) {
+                await setFolder({
+                    key: 'mathDocumentFolders',
+                    itemId: child.id,
+                    value: { ...child, parentId: folder.parentId ?? null },
+                    privacy: 'PUBLIC',
+                    searchKeys: ['name'],
+                    sortKey: 'createdAt',
+                });
+            }
+            await removeListItem({ key: 'mathDocumentFolders', itemId: folder.id });
+        }
+
+        const count = deletableDocs.length + deletableFolders.length;
+        showToast(`Deleted ${count} item${count === 1 ? '' : 's'}.`);
     };
 
     useBrowserKeyboard({
         enabled: keyboardEnabled,
         onArrowKey: handleColumnArrow,
         onPrimaryAction: () => handleColumnArrow('right'),
+        onSelectAll: handleSelectAll,
         onCopy: handleCopy,
         onPaste: () => void handlePaste(),
         onMovePaste: () => void handleMovePaste(),
+        onDelete: () => void handleDeleteSelection(),
     });
 
     // ------------------------------------------------------------- render
-
-    const activeColumnIndex = selectedDocumentId ? -1 : columnPath.length - 1;
 
     const formatDate = (timestamp?: number) =>
         timestamp ? new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -432,14 +581,19 @@ const DocumentColumnBrowser = ({
                                 <ScrollView className='flex-1' showsVerticalScrollIndicator={false}>
                                     <Column className='p-1.5' gap={1}>
                                         {items.map((item) => {
+                                            const id = item.kind === 'folder' ? item.folder.id : item.document.id;
+                                            // Multi-select: every selected row in the focus column gets the
+                                            // solid highlight; ancestor columns keep the muted path style.
+                                            const inFocusSelection = colIndex === focusColumnIndex && focusIds.has(id);
+
                                             if (item.kind === 'folder') {
                                                 const onPath = chainFolderId === item.folder.id;
-                                                const isActive = onPath && colIndex === activeColumnIndex;
+                                                const isActive = inFocusSelection;
                                                 return (
                                                     <Pressable
                                                         key={item.folder.id}
-                                                        nativeID={isActive ? activeRowDomId : undefined}
-                                                        onPress={() => selectColumnItem(colIndex, item)}
+                                                        nativeID={id === leadId ? activeRowDomId : undefined}
+                                                        onPress={(event) => handleItemClick(colIndex, item, event)}
                                                         className={`flex-row items-center gap-2 rounded-lg px-2 py-1.5 ${isActive ? 'bg-text' : onPath ? 'bg-text/15' : 'hover:bg-text/5'}`}
                                                     >
                                                         <Folder size={15} className={isActive ? 'text-background' : 'text-accent'} />
@@ -456,18 +610,12 @@ const DocumentColumnBrowser = ({
                                                 );
                                             }
 
-                                            const isActive = item.document.id === selectedDocumentId;
+                                            const isActive = inFocusSelection;
                                             return (
                                                 <Pressable
                                                     key={item.document.id}
-                                                    nativeID={isActive ? activeRowDomId : undefined}
-                                                    onPress={() => {
-                                                        if (item.document.id === selectedDocumentId) {
-                                                            onOpenDocument(item.document);
-                                                        } else {
-                                                            selectColumnItem(colIndex, item);
-                                                        }
-                                                    }}
+                                                    nativeID={id === leadId ? activeRowDomId : undefined}
+                                                    onPress={(event) => handleItemClick(colIndex, item, event)}
                                                     className={`flex-row items-center gap-2 rounded-lg px-2 py-1.5 ${isActive ? 'bg-text' : 'hover:bg-text/5'}`}
                                                 >
                                                     <FileText size={15} className={isActive ? 'text-background' : 'text-accent'} />

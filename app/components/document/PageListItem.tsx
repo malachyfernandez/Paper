@@ -11,11 +11,13 @@ import { useGeneration } from '../../../contexts/GenerationContext';
 interface PageListItemProps {
     page: MathDocumentPage;
     isActive: boolean;
-    onPress: () => void;
+    /** Member of the multi-selection set (independent of the open/active page). */
+    isSelected?: boolean;
+    onPress: (event?: unknown) => void;
     onConfigure?: () => void;
 }
 
-const PageListItem = ({ page, isActive, onPress, onConfigure }: PageListItemProps) => {
+const PageListItem = ({ page, isActive, isSelected = false, onPress, onConfigure }: PageListItemProps) => {
     const { isPageGenerating, isPageRecentlyCompleted, clearRecentlyCompleted } = useGeneration();
     const isGenerating = isPageGenerating(page.id);
     const isRecentlyCompleted = isPageRecentlyCompleted(page.id);
@@ -25,24 +27,35 @@ const PageListItem = ({ page, isActive, onPress, onConfigure }: PageListItemProp
         return `${title} - ${pageNumber}`;
     };
 
-    const handlePress = () => {
+    const handlePress = (event?: unknown) => {
         // Clear recently completed status when user interacts with the page
         if (isRecentlyCompleted) {
             clearRecentlyCompleted(page.id);
         }
-        
-        if (isActive && onConfigure) {
+
+        // Modifier clicks are selection gestures — never the "tap active page
+        // to configure" shortcut.
+        const native = (event as { nativeEvent?: { metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean } })?.nativeEvent;
+        const hasModifier = Boolean(native?.metaKey || native?.ctrlKey || native?.shiftKey);
+
+        if (!hasModifier && isActive && onConfigure) {
             onConfigure();
         } else {
-            onPress();
+            onPress(event);
         }
     };
+
+    const containerClass = isActive
+        ? 'border-primary-accent bg-primary-accent/10'
+        : isSelected
+          ? 'border-primary-accent/50 bg-primary-accent/5'
+          : 'border-subtle-border bg-inner-background';
 
     return (
         <TouchableOpacity
             onPress={handlePress}
             activeOpacity={0.85}
-            className={`rounded-xl border p-3 ${isActive ? 'border-primary-accent bg-primary-accent/10' : 'border-subtle-border bg-inner-background'}`}
+            className={`rounded-xl border p-3 ${containerClass}`}
         >
             <Row className='items-center justify-between'>
                 <Column gap={1} className='flex-1'>
