@@ -7,6 +7,8 @@ import Row from '../layout/Row';
 import PoppinsText from '../ui/text/PoppinsText';
 import AppButton from '../ui/buttons/AppButton';
 import PoppinsTextInput from '../ui/forms/PoppinsTextInput';
+import DownloadButton from '../ui/buttons/DownloadButton';
+import { MathDocumentPage } from 'types/mathDocuments';
 
 export type ViewOnlyTab = 'screenReadable' | 'imageOverlay';
 
@@ -15,8 +17,8 @@ interface ViewOnlyDocumentHeaderProps {
     documentTitle: string;
     documentDescription: string;
     pageCount: number;
+    pages: MathDocumentPage[];
     onDownloadPdf: () => void;
-    onDownloadMarkdown: () => void;
     onZoomIn: () => void;
     onZoomOut: () => void;
     zoomLevel: number;
@@ -33,8 +35,8 @@ const ViewOnlyDocumentHeader = ({
     documentTitle,
     documentDescription,
     pageCount,
+    pages,
     onDownloadPdf,
-    onDownloadMarkdown,
     onZoomIn,
     onZoomOut,
     zoomLevel,
@@ -207,27 +209,22 @@ const ViewOnlyDocumentHeader = ({
                                 </AppButton>
                             </Row>
 
-                            {/* <AppButton variant='green' className='h-10 px-4' onPress={onDownloadPdf}>
-                                <Column className='items-center' gap={0}>
-                                    <PoppinsText weight='medium' color='white'>
-                                        {'Download PDF'}
-                                    </PoppinsText>
-                                    <PoppinsText varient='subtext' className='text-xs text-white/80'>
-                                        {activeTab === 'imageOverlay' ? 'PDF with images' : 'PDF with text only'}
-                                    </PoppinsText>
-                                </Column>
-                            </AppButton> */}
-
-                            <AppButton variant='green' className='h-11 px-4' onPress={onDownloadMarkdown}>
-                                <Column className='items-center' gap={0}>
-                                    <PoppinsText weight='medium' color='white' className='leading-tight'>
-                                        {'Download Markdown'}
-                                    </PoppinsText>
-                                    <PoppinsText varient='subtext' className='text-[10px] leading-tight text-white/80'>
-                                        All pages in one .md file
-                                    </PoppinsText>
-                                </Column>
-                            </AppButton>
+                            <DownloadButton
+                                prominent
+                                documentTitle={documentTitle}
+                                documentDescription={documentDescription}
+                                pages={pages}
+                                extraFormats={[
+                                    {
+                                        id: 'pdf',
+                                        label: 'PDF',
+                                        fileType: '.pdf',
+                                        description:
+                                            activeTab === 'imageOverlay' ? 'PDF with images' : 'PDF with text only',
+                                        onSelect: onDownloadPdf,
+                                    },
+                                ]}
+                            />
                         </Row>
                     </Row>
                 </Column>
