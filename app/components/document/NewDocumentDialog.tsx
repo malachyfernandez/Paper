@@ -16,13 +16,15 @@ interface NewDocumentDialogProps {
     onCreate: (documentId: string) => void;
     buttonVariant?: 'black' | 'green';
     folderId?: string | null;
+    /** Display name of the folder new documents land in (shown as button subtext). */
+    folderName?: string;
     /** Dropping files while this dialog is open creates the document with the
      *  typed title, then hands the files back so the caller can open the new
      *  page dialog for them. */
     onFilesDropped?: (documentId: string, files: File[]) => void;
 }
 
-const NewDocumentDialog = ({ onCreate, buttonVariant = 'black', folderId = null, onFilesDropped }: NewDocumentDialogProps) => {
+const NewDocumentDialog = ({ onCreate, buttonVariant = 'black', folderId = null, folderName = 'Main folder', onFilesDropped }: NewDocumentDialogProps) => {
     const setDocument = useUserListSet<MathDocument>();
     const [isOpen, setIsOpen] = useState(false);
     const [title, setTitle] = useState('');
@@ -74,7 +76,10 @@ const NewDocumentDialog = ({ onCreate, buttonVariant = 'black', folderId = null,
         <ConvexDialog.Root isOpen={isOpen} onOpenChange={setIsOpen}>
             <ConvexDialog.Trigger asChild>
                 <AppButton variant={buttonVariant} className='h-12 px-5'>
-                    <PoppinsText weight='medium' color='white'>New document</PoppinsText>
+                    <Column className='items-center' gap={0}>
+                        <PoppinsText weight='medium' color='white' className='leading-tight'>New document</PoppinsText>
+                        <PoppinsText color='white' className='text-[10px] leading-tight opacity-70'>in {folderName}</PoppinsText>
+                    </Column>
                 </AppButton>
             </ConvexDialog.Trigger>
             <ConvexDialog.Portal>

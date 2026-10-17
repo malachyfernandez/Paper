@@ -14,9 +14,11 @@ import { FolderPlus } from 'lucide-react-native';
 interface NewFolderDialogProps {
     onCreate?: (folderId: string) => void;
     parentFolderId?: string | null;
+    /** Display name of the folder this creates inside (shown as button subtext). */
+    parentFolderName?: string;
 }
 
-const NewFolderDialog = ({ onCreate, parentFolderId = null }: NewFolderDialogProps) => {
+const NewFolderDialog = ({ onCreate, parentFolderId = null, parentFolderName = 'Main folder' }: NewFolderDialogProps) => {
     const setFolder = useUserListSet<MathDocumentFolder>();
     const [isOpen, setIsOpen] = useState(false);
     const [name, setName] = useState('');
@@ -50,7 +52,10 @@ const NewFolderDialog = ({ onCreate, parentFolderId = null }: NewFolderDialogPro
             <ConvexDialog.Trigger asChild>
                 <AppButton variant='outline-alt' className='h-12 px-5'>
                     <FolderPlus size={18} className='text-text' />
-                    <PoppinsText weight='medium'>New folder</PoppinsText>
+                    <Column className='items-start' gap={0}>
+                        <PoppinsText weight='medium' className='leading-tight'>New folder</PoppinsText>
+                        <PoppinsText varient='subtext' className='text-[10px] leading-tight'>in {parentFolderName}</PoppinsText>
+                    </Column>
                 </AppButton>
             </ConvexDialog.Trigger>
             <ConvexDialog.Portal>
@@ -58,7 +63,7 @@ const NewFolderDialog = ({ onCreate, parentFolderId = null }: NewFolderDialogPro
                 <ConvexDialog.Content>
                     <ConvexDialog.Close iconProps={{ color: 'rgb(246, 238, 219)' }} className='w-10 h-10 bg-accent-hover absolute right-4 top-4 z-10' />
                     <Column>
-                        <DialogHeader text='Create folder' subtext={parentFolderId ? 'This folder will be created inside the current folder.' : 'Organize documents into a folder.'} />
+                        <DialogHeader text='Create folder' subtext={parentFolderId ? `This folder will be created inside ${parentFolderName}.` : 'Organize documents into a folder.'} />
                         <Column className='pt-5' gap={3}>
                             <Column gap={1}>
                                 <PoppinsText weight='medium'>Name</PoppinsText>

@@ -220,7 +220,7 @@ const DocumentColumnBrowser = ({
         if (dir === 'left') {
             if (selectedDocumentId) {
                 setSelectedDocumentId(null);
-            } else if (columnPath.length > 1) {
+            } else if (columnPath.length >= 1) {
                 setColumnPath((prev) => prev.slice(0, -1));
             } else {
                 return;
@@ -304,6 +304,16 @@ const DocumentColumnBrowser = ({
         // Plain click on the one already-selected document opens it.
         if (item.kind === 'document' && item.document.id === selectedDocumentId && focusIds.size <= 1) {
             onOpenDocument(item.document);
+            return;
+        }
+
+        // Plain click on an already-open folder collapses it — repeated
+        // deselects walk back to the root ("main") folder.
+        if (item.kind === 'folder' && columnPath[colIndex] === item.folder.id) {
+            setColumnPath((prev) => prev.slice(0, colIndex));
+            setSelectedDocumentId(null);
+            setFocusIds(new Set());
+            setSelAnchorId(null);
             return;
         }
 

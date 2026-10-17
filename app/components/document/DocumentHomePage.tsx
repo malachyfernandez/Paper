@@ -329,6 +329,9 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
     const showColumns = viewMode === 'columns' && !isSearching;
     // In columns mode, create/paste actions target the deepest open column.
     const createTargetFolderId = showColumns ? columnsFolderId : activeFolderId;
+    const createTargetFolderName = createTargetFolderId
+        ? (folderNameById[createTargetFolderId] ?? 'Main folder')
+        : 'Main folder';
 
     const openPageDialogForDrop = (documentId: string, files: File[]) => {
         setDropSession({ documentId, files });
@@ -430,10 +433,11 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                             onCreate={setActiveDocumentId}
                             buttonVariant='green'
                             folderId={createTargetFolderId}
+                            folderName={createTargetFolderName}
                             onFilesDropped={(documentId, files) => openPageDialogForDrop(documentId, files)}
                         />
                     </View>
-                    <NewFolderDialog parentFolderId={createTargetFolderId} />
+                    <NewFolderDialog parentFolderId={createTargetFolderId} parentFolderName={createTargetFolderName} />
                     <DocumentSortButton />
                     {/* View toggle - macOS segmented control (list / columns) */}
                     <Row className='overflow-hidden rounded border-2 border-border h-12' gap={0}>
