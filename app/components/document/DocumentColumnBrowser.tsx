@@ -13,6 +13,7 @@ import { useUserListGet } from 'hooks/useUserListGet';
 import { useUserListRemove } from 'hooks/useUserListRemove';
 import { useUserListSet } from 'hooks/useUserListSet';
 import { useToast } from 'contexts/ToastContext';
+import DownloadButton from '../ui/buttons/DownloadButton';
 import { MathDocument, MathDocumentFolder, MathDocumentPage } from 'types/mathDocuments';
 import { DocumentSortOption, sortDocuments, sortFolders } from 'utils/documentSort';
 import { getFolderAncestorChain, getFolderAndDescendantIds, makeCopyName } from 'utils/folderTree';
@@ -689,6 +690,7 @@ const DocumentColumnBrowser = ({
                                                 </PoppinsText>
                                             </Row>
                                         </AppButton>
+                                        <ColumnPreviewDownload document={selectedDocument} userIds={scopedUserIds} />
                                         <AppButton variant='outline-alt' className='h-9 w-full' onPress={() => onMoveDocument(selectedDocument)}>
                                             <Row className='items-center' gap={2}>
                                                 <FolderInput size={13} className='text-text' />
@@ -713,6 +715,31 @@ const DocumentColumnBrowser = ({
                 </Row>
             </ScrollView>
         </ScrollShadow>
+    );
+};
+
+/** Preview-pane download row: fetches the selected document's pages (the
+ *  browser only loads document records) and hands them to the shared
+ *  DownloadButton dropdown — same formats + options as the top bar. */
+const ColumnPreviewDownload = ({ document, userIds }: { document: MathDocument; userIds: string[] }) => {
+    const pageRecords = useUserListGet<MathDocumentPage>({
+        key: 'mathDocumentPages',
+        filterFor: document.id,
+        userIds,
+        returnTop: 100,
+    });
+    const pages = useMemo(
+        () => (pageRecords ?? []).map((record) => record.value).sort((a, b) => a.pageNumber - b.pageNumber),
+        [pageRecords],
+    );
+    return (
+        <DownloadButton
+            documentTitle={document.title}
+            documentDescription={document.description}
+            pages={pages}
+            fullWidth
+            className='w-full'
+        />
     );
 };
 

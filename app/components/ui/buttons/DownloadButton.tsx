@@ -28,6 +28,8 @@ interface DownloadButtonProps {
     extraFormats?: DownloadOption[];
     /** Green two-line trigger used on the public view-only header. */
     prominent?: boolean;
+    /** Outline full-width row matching the preview pane's other actions. */
+    fullWidth?: boolean;
 }
 
 const MENU_WIDTH = 232;
@@ -39,6 +41,7 @@ const DownloadButton = ({
     className,
     extraFormats = [],
     prominent = false,
+    fullWidth = false,
 }: DownloadButtonProps) => {
     const { showToast } = useToast();
     const menu = useHoverMenu(MENU_WIDTH);
@@ -115,6 +118,16 @@ const DownloadButton = ({
                         </PoppinsText>
                     </Column>
                     <ChevronDown size={14} color='rgb(246, 238, 219)' />
+                </AppButton>
+            ) : fullWidth ? (
+                <AppButton variant='outline-alt' className='h-9 w-full' onPress={menu.toggle}>
+                    <Row className='items-center' gap={2}>
+                        <Download size={13} className='text-text' />
+                        <PoppinsText weight='medium' className='text-xs'>
+                            Download
+                        </PoppinsText>
+                    </Row>
+                    <ChevronDown size={12} className='text-text' />
                 </AppButton>
             ) : (
                 <AppButton
