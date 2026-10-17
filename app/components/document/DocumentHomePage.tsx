@@ -436,20 +436,20 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                     <NewFolderDialog parentFolderId={createTargetFolderId} />
                     <DocumentSortButton />
                     {/* View toggle - macOS segmented control (list / columns) */}
-                    <Row className='overflow-hidden rounded-lg border border-border h-12' gap={0}>
+                    <Row className='overflow-hidden rounded border-2 border-border h-12' gap={0}>
                         <Pressable
                             accessibilityLabel='List view'
                             onPress={() => handleViewModeChange('list')}
-                            className={`h-full w-11 items-center justify-center ${viewMode === 'list' ? 'bg-text/15' : 'hover:bg-text/5'}`}
+                            className={`h-full w-12 items-center justify-center ${viewMode === 'list' ? 'bg-border/20' : 'hover:bg-border/10'}`}
                         >
-                            <List size={16} className='text-text' />
+                            <List size={18} className='text-text' />
                         </Pressable>
                         <Pressable
                             accessibilityLabel='Column view'
                             onPress={() => handleViewModeChange('columns')}
-                            className={`h-full w-11 items-center justify-center border-l border-border ${viewMode === 'columns' ? 'bg-text/15' : 'hover:bg-text/5'}`}
+                            className={`h-full w-12 items-center justify-center border-l-2 border-border ${viewMode === 'columns' ? 'bg-border/20' : 'hover:bg-border/10'}`}
                         >
-                            <Columns3 size={16} className='text-text' />
+                            <Columns3 size={18} className='text-text' />
                         </Pressable>
                     </Row>
                 </Row>
