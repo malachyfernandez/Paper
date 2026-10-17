@@ -43,14 +43,14 @@ const DocumentSortButton = ({ className }: DocumentSortButtonProps) => {
         >
             <AppButton
                 variant='outline-alt'
-                className='h-12 w-12 sm:w-auto sm:px-4'
+                className='h-10 w-10 sm:w-auto sm:px-3'
                 onPress={menu.toggle}
             >
-                <ArrowUpDown size={16} className='text-text' />
-                <PoppinsText weight='medium' className='hidden sm:block'>
+                <ArrowUpDown size={15} className='text-text' />
+                <PoppinsText weight='medium' className='hidden sm:block text-sm'>
                     {currentOption.label}
                 </PoppinsText>
-                <ChevronDown size={14} className='text-text' />
+                <ChevronDown size={13} className='text-text hidden sm:block' />
             </AppButton>
 
             <HoverMenuPopup

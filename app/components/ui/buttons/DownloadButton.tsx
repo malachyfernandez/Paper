@@ -122,11 +122,11 @@ const DownloadButton = ({
                     className='h-10 w-10 sm:w-auto sm:px-3'
                     onPress={menu.toggle}
                 >
-                    <Download size={16} className='text-text' />
+                    <Download size={15} className='text-text' />
                     <PoppinsText weight='medium' className='hidden sm:block'>
                         Download
                     </PoppinsText>
-                    <ChevronDown size={14} className='text-text' />
+                    <ChevronDown size={13} className='text-text hidden sm:block' />
                 </AppButton>
             )}
 

@@ -20,6 +20,12 @@ interface MenuPosition {
  *
  * Press-opened (pinned) menus ignore hover and stay up until an option is
  * chosen, the trigger is pressed again, or the backdrop behind them is hit.
+ *
+ * Hover = preview, click = pin: a click while the menu is already showing
+ * (hover state) pins it open rather than hiding it — the first click a user
+ * makes on their way into a hover-opened menu must never yank it away. A
+ * click only closes once the menu is pinned (i.e. the user has already
+ * interacted with it).
  */
 export const useHoverMenu = (menuWidth: number) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -65,13 +71,14 @@ export const useHoverMenu = (menuWidth: number) => {
     }, [clearCloseTimer, measure]);
 
     const toggle = useCallback(() => {
-        if (isOpen) {
+        if (isOpen && pinned) {
             close();
-        } else {
-            setPinned(true);
-            open();
+            return;
         }
-    }, [isOpen, close, open]);
+        // Hover-opened or closed: click pins it open (preview -> committed).
+        setPinned(true);
+        if (!isOpen) open();
+    }, [isOpen, pinned, close, open]);
 
     // A fixed-position menu doesn't follow the page — close on scroll/resize.
     useEffect(() => {
