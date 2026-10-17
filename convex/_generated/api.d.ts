@@ -9,6 +9,7 @@
  */
 
 import type * as devUtils from "../devUtils.js";
+import type * as fairride from "../fairride.js";
 import type * as globals from "../globals.js";
 import type * as http from "../http.js";
 import type * as mathAi from "../mathAi.js";
@@ -28,6 +29,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   devUtils: typeof devUtils;
+  fairride: typeof fairride;
   globals: typeof globals;
   http: typeof http;
   mathAi: typeof mathAi;

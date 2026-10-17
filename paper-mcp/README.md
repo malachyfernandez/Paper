@@ -22,13 +22,17 @@ Configure the Convex URL — any one of:
 
 Sign in — any one of:
 
+- env `PAPER_SESSION_TOKEN` — **recommended for Google/Clerk accounts**: log into
+  the app, open Profile → "Create agent token", and paste the token here.
 - env `PAPER_USER_CODE` (exchanged for a session token, cached in `~/.paper-mcp/session.json`)
-- env `PAPER_SESSION_TOKEN`
 - the `paper_sign_in` tool at runtime
 
 > User codes come from the `PAPER_USER_CODES_JSON` env var configured on the
 > Convex deployment (`{"<code>": {"userId": "...", "name": "...", "email": "..."}}`).
-> A valid session token grants full access to that user's lists — treat it like a password.
+> Agent tokens come from the app's Profile dialog (requires a signed-in account)
+> and live as revocable `user_code_sessions` rows.
+> Either way, a valid session token grants full access to that user's lists —
+> treat it like a password.
 
 ## MCP config
 

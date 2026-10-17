@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
+import { Check, Copy } from 'lucide-react-native';
+import { useMutation } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import Column from '../layout/Column';
 import Row from '../layout/Row';
 import AppButton from '../ui/buttons/AppButton';
@@ -17,6 +20,31 @@ interface UserProfileDialogProps {
 const UserProfileDialog = ({ children }: UserProfileDialogProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const { signOut } = useAppAuth();
+    const createAgentSession = useMutation(api.userCodeAuth.createAgentSession);
+    const [agentToken, setAgentToken] = useState('');
+    const [isCreatingToken, setIsCreatingToken] = useState(false);
+    const [didCopy, setDidCopy] = useState(false);
+
+    const handleCreateAgentToken = async () => {
+        setIsCreatingToken(true);
+        try {
+            const { sessionToken } = await createAgentSession({});
+            setAgentToken(sessionToken);
+            setDidCopy(false);
+        } finally {
+            setIsCreatingToken(false);
+        }
+    };
+
+    const handleCopyToken = async () => {
+        if (!agentToken || Platform.OS !== 'web' || typeof navigator === 'undefined') return;
+        try {
+            await navigator.clipboard.writeText(agentToken);
+            setDidCopy(true);
+        } catch {
+            // Clipboard unavailable — the token stays selectable in the field.
+        }
+    };
 
     // Get user data from userVariables
     const [userData] = useUserVariable({
@@ -88,6 +116,46 @@ const UserProfileDialog = ({ children }: UserProfileDialogProps) => {
                                 <PoppinsText varient='subtext' className='text-xs'>
                                     Default instructions for AI when converting images
                                 </PoppinsText>
+                            </Column>
+
+                            {/* Agent Access Section */}
+                            <Column gap={2} className='border-t border-subtle-border pt-6'>
+                                <PoppinsText weight='medium' varient='cardHeader' className='pl-2'>Agent Access</PoppinsText>
+                                <PoppinsText varient='subtext' className='text-xs'>
+                                    A long-lived token for the Paper MCP server and other agents — full access to your documents, treat it like a password.
+                                </PoppinsText>
+                                {agentToken ? (
+                                    <Row gap={2} className='items-center'>
+                                        <PoppinsTextInput
+                                            value={agentToken}
+                                            onChangeText={() => {}}
+                                            className='flex-1 border border-subtle-border bg-inner-background p-3 text-xs font-mono'
+                                        />
+                                        <AppButton variant='outline-alt' className='h-11 w-11' onPress={() => void handleCopyToken()}>
+                                            {didCopy ? (
+                                                <Check size={16} className='text-accent' />
+                                            ) : (
+                                                <Copy size={16} className='text-text' />
+                                            )}
+                                        </AppButton>
+                                    </Row>
+                                ) : (
+                                    <AppButton
+                                        variant='outline-alt'
+                                        className='h-11'
+                                        onPress={() => void handleCreateAgentToken()}
+                                        disabled={isCreatingToken}
+                                    >
+                                        <PoppinsText weight='medium'>
+                                            {isCreatingToken ? 'Creating…' : 'Create agent token'}
+                                        </PoppinsText>
+                                    </AppButton>
+                                )}
+                                {agentToken ? (
+                                    <PoppinsText varient='subtext' className='text-xs'>
+                                        Paste it into your MCP config as PAPER_SESSION_TOKEN. Create a new token any time — old ones keep working until signed out.
+                                    </PoppinsText>
+                                ) : null}
                             </Column>
 
                             {/* Sign Out Button */}

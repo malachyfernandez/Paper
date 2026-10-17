@@ -94,21 +94,63 @@ export async function resolveAppUser(ctx: any, sessionToken?: string | null) {
     return null;
   }
 
+  // Env-configured user codes resolve to the configured user. Sessions minted
+  // by createAgentSession carry the user on the row instead of an env code —
+  // other session types still require their code to exist in the env config.
   const definition = parseUserCodeDefinitions()[session.code];
 
-  if (!definition) {
-    return null;
+  if (definition) {
+    return {
+      source: "user_code" as const,
+      userToken: definition.userId,
+      name: definition.name,
+      email: definition.email,
+      sessionToken: session.sessionToken,
+      code: session.code,
+    };
   }
 
-  return {
-    source: "user_code" as const,
-    userToken: definition.userId,
-    name: definition.name,
-    email: definition.email,
-    sessionToken: session.sessionToken,
-    code: session.code,
-  };
+  if (session.code === "agent" && session.userId) {
+    return {
+      source: "user_code" as const,
+      userToken: session.userId,
+      name: session.name,
+      email: session.email,
+      sessionToken: session.sessionToken,
+      code: session.code,
+    };
+  }
+
+  return null;
 }
+
+/** Mint a long-lived session for the signed-in (Clerk) user — for agents and
+ *  the MCP server, where Google OAuth can't run headlessly. */
+export const createAgentSession = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity?.subject) {
+      throw new Error("Sign in first.");
+    }
+
+    const now = Date.now();
+    const sessionToken = crypto.randomUUID();
+
+    await ctx.db.insert("user_code_sessions", {
+      sessionToken,
+      code: "agent",
+      userId: identity.subject,
+      name: typeof identity.name === "string" ? identity.name : "",
+      email: typeof identity.email === "string" ? identity.email : "",
+      createdAt: now,
+      lastUsedAt: now,
+    });
+
+    return { sessionToken };
+  },
+});
 
 export const signIn = mutation({
   args: {
@@ -160,19 +202,31 @@ export const getSession = query({
 
     const definition = parseUserCodeDefinitions()[session.code];
 
-    if (!definition) {
-      return null;
+    if (definition) {
+      return {
+        sessionToken: session.sessionToken,
+        code: session.code,
+        userId: definition.userId,
+        name: definition.name,
+        email: definition.email,
+        createdAt: session.createdAt,
+        lastUsedAt: session.lastUsedAt,
+      };
     }
 
-    return {
-      sessionToken: session.sessionToken,
-      code: session.code,
-      userId: definition.userId,
-      name: definition.name,
-      email: definition.email,
-      createdAt: session.createdAt,
-      lastUsedAt: session.lastUsedAt,
-    };
+    if (session.code === "agent" && session.userId) {
+      return {
+        sessionToken: session.sessionToken,
+        code: session.code,
+        userId: session.userId,
+        name: session.name,
+        email: session.email,
+        createdAt: session.createdAt,
+        lastUsedAt: session.lastUsedAt,
+      };
+    }
+
+    return null;
   },
 });
 
