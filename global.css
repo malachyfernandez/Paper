@@ -6,7 +6,6 @@
 @source './node_modules/heroui-native/lib';
 
 @theme {
-    --color-l: rgb(246, 0, 0);
     --color-background: rgb(246, 238, 219);
     --color-inner-background: rgb(253, 251, 246);
     --color-text: #1a1a1a;
