@@ -22,6 +22,7 @@ import { MathDocument, MathDocumentPage } from 'types/mathDocuments';
 import DocumentSidebar from './DocumentSidebar';
 import DocumentEditor from './DocumentEditor';
 import NewPageDialog from './NewPageDialog';
+import FileDropZone from './FileDropZone';
 import { useUserListGet } from 'hooks/useUserListGet';
 import AppButton from '../ui/buttons/AppButton';
 import { PagesButton } from '../ui/buttons/PagesButton';
@@ -40,6 +41,31 @@ const DocumentEditorPage = ({ documentId, userId }: DocumentEditorPageProps) => 
     });
 
     const [showSidebar, setShowSidebar] = useState(false);
+    const [dropFiles, setDropFiles] = useState<File[] | null>(null);
+    const [dropDialogOpen, setDropDialogOpen] = useState(false);
+
+    const handleDroppedFiles = (files: File[]) => {
+        setDropFiles(files);
+        setDropDialogOpen(true);
+    };
+
+    const renderDropDialog = () => (
+        <NewPageDialog
+            documentId={documentId}
+            existingPageCount={pages.length}
+            isOpen={dropDialogOpen}
+            onOpenChange={(open) => {
+                setDropDialogOpen(open);
+                if (!open) setDropFiles(null);
+            }}
+            initialFiles={dropFiles}
+            onCreate={(pageId) => {
+                setDropDialogOpen(false);
+                setDropFiles(null);
+                setActivePageId(pageId);
+            }}
+        />
+    );
 
     const handleToggleSidebar = () => {
         setShowSidebar(!showSidebar);
@@ -79,6 +105,13 @@ const DocumentEditorPage = ({ documentId, userId }: DocumentEditorPageProps) => 
 
     if (pages.length == 0 && !scopedUserIds.includes('__loading__')) {
         return (
+            <FileDropZone
+                enabled={Platform.OS === 'web'}
+                dropAnywhere
+                className='flex-1'
+                overlayLabel='Drop files to add pages'
+                onFiles={handleDroppedFiles}
+            >
             <Column className='flex-1 items-center justify-center px-6'>
                 <Animated.View
                     entering={FadeInDown.duration(500).easing(Easing.inOut(Easing.ease))}
@@ -92,10 +125,19 @@ const DocumentEditorPage = ({ documentId, userId }: DocumentEditorPageProps) => 
                     </Column>
                 </Animated.View>
             </Column>
+            {renderDropDialog()}
+            </FileDropZone>
         );
     }
 
     return (
+        <FileDropZone
+            enabled={Platform.OS === 'web'}
+            dropAnywhere
+            className='flex-1'
+            overlayLabel='Drop files to add pages'
+            onFiles={handleDroppedFiles}
+        >
         <View className='flex-1'>
             {/* This will be handled by DocumentEditor component */}
 
@@ -160,9 +202,10 @@ const DocumentEditorPage = ({ documentId, userId }: DocumentEditorPageProps) => 
                     onSetActivePageId={setActivePageId}
                 />
             </View>
-
+            {renderDropDialog()}
 
         </View >
+        </FileDropZone>
     );
 };
 

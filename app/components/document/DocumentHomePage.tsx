@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, TouchableOpacity, View } from 'react-native';
+import { Platform, Pressable, ScrollView, TouchableOpacity, View } from 'react-native';
 import { ScrollShadow, SearchField } from 'heroui-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Column from '../layout/Column';
@@ -19,8 +19,11 @@ import DocumentSortButton from './DocumentSortButton';
 import FolderCard from './FolderCard';
 import NewDocumentDialog from './NewDocumentDialog';
 import NewFolderDialog from './NewFolderDialog';
+import NewPageDialog from './NewPageDialog';
 import EditFolderDialog from './EditFolderDialog';
 import MoveToFolderDialog from './MoveToFolderDialog';
+import FileDropZone from './FileDropZone';
+import { generateId } from 'utils/generateId';
 import { ArrowLeft, Columns3, FileText, Folder, List, Pencil } from 'lucide-react-native';
 import IconButton from '../ui/buttons/IconButton';
 import LoadingState from '../ui/loading/LoadingState';
@@ -57,6 +60,9 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
     });
     /** Deepest column open in the Finder-style browser (drives create-button targets). */
     const [columnsFolderId, setColumnsFolderId] = useState<string | null>(null);
+    /** Files dropped on the browser -> temp document + page dialog for it. */
+    const [dropSession, setDropSession] = useState<{ documentId: string; files: File[] } | null>(null);
+    const [dropDialogOpen, setDropDialogOpen] = useState(false);
     /** List view: folders expanded in place via their disclosure triangle. */
     const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
 
@@ -324,6 +330,37 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
     // In columns mode, create/paste actions target the deepest open column.
     const createTargetFolderId = showColumns ? columnsFolderId : activeFolderId;
 
+    const openPageDialogForDrop = (documentId: string, files: File[]) => {
+        setDropSession({ documentId, files });
+        setDropDialogOpen(true);
+    };
+
+    const createTempDocument = async (files: File[]) => {
+        const documentId = generateId();
+        const now = Date.now();
+        const stem = files[0]?.name?.replace(/\.[^.]+$/, '').trim() || 'New document';
+        await setDocument({
+            key: 'mathDocuments',
+            itemId: documentId,
+            value: {
+                id: documentId,
+                title: stem,
+                description: '',
+                createdAt: now,
+                lastOpenedAt: now,
+                folderId: createTargetFolderId,
+            },
+            privacy: 'PUBLIC',
+            searchKeys: ['title', 'description'],
+            sortKey: 'lastOpenedAt',
+        });
+        return documentId;
+    };
+
+    const handleDroppedFiles = async (files: File[]) => {
+        openPageDialogForDrop(await createTempDocument(files), files);
+    };
+
     /** Recursive list-view rendering: a folder card plus, when expanded via its
      *  disclosure triangle, its subfolders and documents indented underneath. */
     const renderFolderItem = (folder: MathDocumentFolder, depth: number): React.ReactNode => {
@@ -364,6 +401,13 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
     };
 
     return (
+        <FileDropZone
+            enabled={Platform.OS === 'web'}
+            dropAnywhere
+            className='flex-1'
+            overlayLabel='Drop files to create a document'
+            onFiles={(files) => void handleDroppedFiles(files)}
+        >
         <Column className='flex-1' gap={6}>
             {/* Header Section */}
             <Column className='max-w-[800px] w-full mx-auto px-4' gap={4}>
@@ -382,7 +426,12 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                 {/* Create Buttons */}
                 <Row gap={2} className='items-center'>
                     <View className='flex-1'>
-                        <NewDocumentDialog onCreate={setActiveDocumentId} buttonVariant='green' folderId={createTargetFolderId} />
+                        <NewDocumentDialog
+                            onCreate={setActiveDocumentId}
+                            buttonVariant='green'
+                            folderId={createTargetFolderId}
+                            onFilesDropped={(documentId, files) => openPageDialogForDrop(documentId, files)}
+                        />
                     </View>
                     <NewFolderDialog parentFolderId={createTargetFolderId} />
                     <DocumentSortButton />
@@ -568,7 +617,26 @@ const DocumentHomePage = ({ userId, setActiveDocumentId }: DocumentHomePageProps
                 isOpen={movingDocument !== null}
                 onOpenChange={(open) => { if (!open) setMovingDocument(null); }}
             />
+            {dropSession && (
+                <NewPageDialog
+                    documentId={dropSession.documentId}
+                    existingPageCount={0}
+                    isOpen={dropDialogOpen}
+                    onOpenChange={(open) => {
+                        setDropDialogOpen(open);
+                        if (!open) setDropSession(null);
+                    }}
+                    initialFiles={dropSession.files}
+                    onCreate={() => {
+                        setDropDialogOpen(false);
+                        const documentId = dropSession.documentId;
+                        setDropSession(null);
+                        setActiveDocumentId(documentId);
+                    }}
+                />
+            )}
         </Column>
+        </FileDropZone>
     );
 };
 

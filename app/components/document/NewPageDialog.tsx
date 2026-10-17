@@ -37,9 +37,24 @@ interface NewPageDialogProps {
     onCreate: (pageId: string) => void;
     triggerButtonVariant?: 'black' | 'green';
     createButtonVariant?: 'black' | 'green';
+    /** Controlled mode: parent owns open state and no trigger renders. */
+    isOpen?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    /** Files already in hand (e.g. dropped anywhere on the screen) — the
+     *  dialog uploads them into draft pages as soon as it opens. */
+    initialFiles?: File[] | null;
 }
 
-const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonVariant = 'green', createButtonVariant = 'green' }: NewPageDialogProps) => {
+const NewPageDialog = ({
+    documentId,
+    existingPageCount,
+    onCreate,
+    triggerButtonVariant = 'green',
+    createButtonVariant = 'green',
+    isOpen: controlledIsOpen,
+    onOpenChange,
+    initialFiles,
+}: NewPageDialogProps) => {
     const { executeCommand } = useUndoRedo();
     const createUndoSnapshot = useCreateUndoSnapshot();
     const setPage = useUserListSet<MathDocumentPage>();
@@ -47,7 +62,13 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
     const convertMathImageToMarkdown = useAction(api.mathAi.convertMathImageToMarkdown);
     const generatePublicImageUploadUrl = useAction(api.uploadthing.generatePublicImageUploadUrl);
     const { setGeneratingPage, isPageGenerating } = useGeneration();
-    const [isOpen, setIsOpen] = useState(false);
+    const [internalOpen, setInternalOpen] = useState(false);
+    const isControlled = controlledIsOpen !== undefined;
+    const isOpen = isControlled ? controlledIsOpen : internalOpen;
+    const setIsOpen = (open: boolean) => {
+        if (!isControlled) setInternalOpen(open);
+        onOpenChange?.(open);
+    };
     const nextPageNumber = existingPageCount + 1;
     const [titleInput, setTitleInput] = useState('Page');
     const [draftPages, setDraftPages] = useState<DraftPage[]>([]);
@@ -152,6 +173,13 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
             setIsProcessingFile(false);
         }
     }, [isOpen]);
+
+    // Files handed to us (screen-level drag-drop) become draft pages on open.
+    useEffect(() => {
+        if (isOpen && initialFiles?.length) {
+            void handleDroppedFiles(initialFiles);
+        }
+    }, [isOpen, initialFiles, handleDroppedFiles]);
 
     // Cleanup blob URLs when component unmounts
     useEffect(() => {
@@ -305,11 +333,13 @@ const NewPageDialog = ({ documentId, existingPageCount, onCreate, triggerButtonV
 
     return (
         <ConvexDialog.Root isOpen={isOpen} onOpenChange={setIsOpen}>
-            <ConvexDialog.Trigger asChild>
-                <AppButton variant={triggerButtonVariant} className='h-12 px-5'>
-                    <PoppinsText weight='medium' color='white'>Add pages</PoppinsText>
-                </AppButton>
-            </ConvexDialog.Trigger>
+            {!isControlled && (
+                <ConvexDialog.Trigger asChild>
+                    <AppButton variant={triggerButtonVariant} className='h-12 px-5'>
+                        <PoppinsText weight='medium' color='white'>Add pages</PoppinsText>
+                    </AppButton>
+                </ConvexDialog.Trigger>
+            )}
             <ConvexDialog.Portal>
                 <ConvexDialog.Overlay />
                 <ConvexDialog.Content>
