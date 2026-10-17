@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, TouchableOpacity, View } from 'react-native';
 import Animated, {
     useSharedValue,
@@ -75,14 +75,15 @@ const DocumentEditorPage = ({ documentId, userId }: DocumentEditorPageProps) => 
         setShowSidebar(false);
     };
 
-    const scopedUserIds = userId ? [userId] : ['__loading__'];
+    const scopedUserIds = useMemo(() => (userId ? [userId] : ['__loading__']), [userId]);
 
-    const pages = useUserListGet<MathDocumentPage>({
+    const pageRecords = useUserListGet<MathDocumentPage>({
         key: 'mathDocumentPages',
         filterFor: documentId,
         userIds: scopedUserIds,
         returnTop: 100,
-    }) ?? [];
+    });
+    const pages = useMemo(() => pageRecords ?? [], [pageRecords]);
 
     // HERE
 

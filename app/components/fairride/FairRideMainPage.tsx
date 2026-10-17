@@ -44,7 +44,7 @@ const FairRideMainPage = () => {
     searchKeys: ['name'],
   });
 
-  useSyncUserData(userData.value, setUserData);
+  useSyncUserData(userData, setUserData);
 
   const [appScreen, setAppScreen] = useState<AppScreen>('role_select');
   const [riderScreen, setRiderScreen] = useState<RiderScreen>('home');

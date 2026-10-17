@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useAppAuth } from "../contexts/AppAuthContext";
 
-export const useSyncUserData = (userData: any, setUserData: any) => {
+export const useSyncUserData = (userDataRecord: any, setUserData: any) => {
     const { user, isLoading, isAuthenticated } = useAppAuth();
 
     useEffect(() => {
@@ -12,6 +12,14 @@ export const useSyncUserData = (userData: any, setUserData: any) => {
         if (!isAuthenticated || !user) {
             return;
         }
+
+        // Wait for the stored record to resolve — writing against the
+        // pre-load default triggered OptimisticConcurrencyControlFailure.
+        if (!userDataRecord || userDataRecord.state?.isSyncing) {
+            return;
+        }
+
+        const userData = userDataRecord.value;
 
         if (userData === undefined) {
             return;
@@ -35,5 +43,5 @@ export const useSyncUserData = (userData: any, setUserData: any) => {
                 userId: nextUserId,
             });
         }
-    }, [isAuthenticated, isLoading, setUserData, user, userData]);
+    }, [isAuthenticated, isLoading, setUserData, user, userDataRecord]);
 };

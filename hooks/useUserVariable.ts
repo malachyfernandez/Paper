@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { devWarn } from "../utils/devWarnings";
 import { userVarConfig } from "../utils/userVarConfig";
 import { decodeUserValue, encodeUserValue } from "./userValueSerialization";
@@ -263,10 +263,11 @@ export function useUserVariable<T>({
     const opIdRef = useRef(0);
     const didAutoCreateRef = useRef(false);
     
-    const decodedRecordValue =
-        record?.value === undefined
-            ? undefined
-            : decodeUserValue(record.value as T);
+    const recordValue = record?.value;
+    const decodedRecordValue = useMemo(
+        () => (recordValue === undefined ? undefined : decodeUserValue(recordValue as T)),
+        [recordValue],
+    );
 
     const baseValue: T = isSyncing
         ? (defaultValue as T)
@@ -333,11 +334,27 @@ export function useUserVariable<T>({
         }
     );
 
-    const setValue = (newValue: T) => {
+    // Stable dep keys for array/config props so setValue doesn't churn when
+    // callers pass fresh literals every render.
+    const privacyDep = JSON.stringify(privacy);
+    const searchKeysDep = JSON.stringify(searchKeys);
+
+    const setValue = useCallback((newValue: T) => {
         if (isAppAuthLoading || !isAppAuthenticated) {
             devWarn(
                 "uservar_auth_not_ready",
                 `Blocked set for key="${key}" because app auth is not ready.`
+            );
+            return;
+        }
+
+        // Writing optimistically before the first record resolves corrupts the
+        // local store base — the client can't rebase and resets the socket
+        // (OptimisticConcurrencyControlFailure). Wait for the record to load.
+        if (record === undefined) {
+            devWarn(
+                "uservar_not_loaded",
+                `Blocked set for key="${key}" because the record is still loading.`
             );
             return;
         }
@@ -365,9 +382,12 @@ export function useUserVariable<T>({
             msSinceSet: 0,
         });
 
-        const backendPrivacy = Array.isArray(privacy)
-            ? { allowList: privacy }
-            : privacy;
+        const parsedPrivacy = privacyDep ? (JSON.parse(privacyDep) as Privacy) : undefined;
+        const parsedSearchKeys = searchKeysDep ? (JSON.parse(searchKeysDep) as string[]) : undefined;
+
+        const backendPrivacy = Array.isArray(parsedPrivacy)
+            ? { allowList: parsedPrivacy }
+            : parsedPrivacy;
 
         const timeoutHandle = setTimeout(() => {
             const pending = pendingOpRef.current;
@@ -411,7 +431,7 @@ export function useUserVariable<T>({
             sessionToken,
             privacy: backendPrivacy,
             filterKey,
-            searchKeys,
+            searchKeys: parsedSearchKeys,
             sortKey,
             overwriteStoredConfig,
             overwriteStoredPrivacy,
@@ -465,7 +485,23 @@ export function useUserVariable<T>({
                     lastOpTimedOutAt: undefined,
                 });
             });
-    };
+    }, [
+        key,
+        sessionToken,
+        record,
+        setMutation,
+        isAppAuthLoading,
+        isAppAuthenticated,
+        timeoutMs,
+        optimisticTimeoutBehavior,
+        onOpStatusChange,
+        privacyDep,
+        searchKeysDep,
+        filterKey,
+        sortKey,
+        overwriteStoredConfig,
+        overwriteStoredPrivacy,
+    ]);
 
     useEffect(() => {
         if (didAutoCreateRef.current) return;
@@ -476,7 +512,7 @@ export function useUserVariable<T>({
 
         didAutoCreateRef.current = true;
         setValue(defaultValue as T);
-    }, [record, defaultValue, isAppAuthLoading, isAppAuthenticated]);
+    }, [record, defaultValue, isAppAuthLoading, isAppAuthenticated, setValue]);
 
     useEffect(() => {
         return () => {
@@ -488,18 +524,23 @@ export function useUserVariable<T>({
         };
     }, []);
 
-    return [
-        {
-            ...(record ?? {}),
-            value,
-            confirmedValue,
-            state: {
-                isSyncing,
-                lastOpStatus: opState.lastOpStatus,
-                lastOpStartedAt: opState.lastOpStartedAt,
-                lastOpTimedOutAt: opState.lastOpTimedOutAt,
-            },
-        } as UserVariableResult<T>,
-        setValue,
-    ];
+    // Memoized so consumers can use the record in effect deps without
+    // re-firing every render — the object used to be rebuilt each time.
+    const result = useMemo(
+        () =>
+            ({
+                ...(record ?? {}),
+                value,
+                confirmedValue,
+                state: {
+                    isSyncing,
+                    lastOpStatus: opState.lastOpStatus,
+                    lastOpStartedAt: opState.lastOpStartedAt,
+                    lastOpTimedOutAt: opState.lastOpTimedOutAt,
+                },
+            }) as UserVariableResult<T>,
+        [record, value, confirmedValue, isSyncing, opState],
+    );
+
+    return [result, setValue];
 }

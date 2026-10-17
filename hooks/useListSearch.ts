@@ -1,5 +1,5 @@
 import { useUserListGet } from './useUserListGet';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { MathDocument, MathDocumentPage } from 'types/mathDocuments';
 
 interface UseListSearchOptions<T = any> {
@@ -95,8 +95,9 @@ export function useListSearch<T = any>({
         })
     );
 
-    // Convert UserListRecord arrays to clean value arrays
-    const itemValues = items?.map(item => item.value);
+    // Convert UserListRecord arrays to clean value arrays — memoized so the
+    // identity only changes when the underlying records do.
+    const itemValues = useMemo(() => items?.map(item => item.value), [items]);
     const additionalItemValues = additionalItems?.map(results => 
         results?.map(item => item.value) ?? []
     );

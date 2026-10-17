@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import type { UserListRecord } from "./useUserList";
@@ -74,8 +75,15 @@ export function useUserListGet<TValue = any>({
     sessionToken,
   });
 
-  return results?.map((record) => ({
-    ...record,
-    value: decodeUserValue(record.value as TValue),
-  })) as UserListRecord<TValue>[] | undefined;
+  // Memoized — mapping fresh each render meant a new array + new record
+  // objects every render, which made every effect keyed on these results
+  // re-fire (and some of those effects write back to Convex).
+  return useMemo(
+    () =>
+      results?.map((record) => ({
+        ...record,
+        value: decodeUserValue(record.value as TValue),
+      })) as UserListRecord<TValue>[] | undefined,
+    [results],
+  );
 }

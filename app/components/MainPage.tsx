@@ -27,7 +27,7 @@ const MainPage: React.FC<MainPageProps> = () => {
     searchKeys: ['name'],
   });
 
-  useSyncUserData(userData.value, setUserData);
+  useSyncUserData(userData, setUserData);
 
   const userId = userData.value.userId || '';
 
